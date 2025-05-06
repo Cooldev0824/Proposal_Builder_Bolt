@@ -1,13 +1,13 @@
 <template>
-  <div 
+  <div
     class="image-element element"
     :class="{ selected: isSelected }"
     :style="elementStyle"
     @mousedown.stop="startDrag"
   >
-    <img 
-      :src="element.content" 
-      alt="Image" 
+    <img
+      :src="element.content"
+      alt="Image"
       class="element-image"
       :style="imageStyle"
       @error="handleImageError"
@@ -77,27 +77,36 @@ function startDrag(event: MouseEvent) {
   startY = event.clientY
   startLeft = props.element.position.x
   startTop = props.element.position.y
-  
+
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
+  // Calculate new position
+  let newX = startLeft + deltaX
+  let newY = startTop + deltaY
+
+  // Snap to grid (10px grid)
+  const gridSize = 10
+  newX = Math.round(newX / gridSize) * gridSize
+  newY = Math.round(newY / gridSize) * gridSize
+
   const newPosition = {
-    x: startLeft + deltaX,
-    y: startTop + deltaY
+    x: newX,
+    y: newY
   }
-  
+
   const updatedElement = {
     ...props.element,
     position: newPosition
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -113,32 +122,37 @@ function startResize(event: MouseEvent) {
   startY = event.clientY
   startWidth = props.element.size.width
   startHeight = props.element.size.height
-  
+
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
 }
 
 function onResize(event: MouseEvent) {
   if (!isResizing) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   // Maintain aspect ratio by default
   const aspectRatio = startWidth / startHeight
-  const newWidth = Math.max(50, startWidth + deltaX)
-  const newHeight = Math.max(50, newWidth / aspectRatio)
-  
+  let newWidth = Math.max(50, startWidth + deltaX)
+  let newHeight = Math.max(50, newWidth / aspectRatio)
+
+  // Snap to grid (10px grid)
+  const gridSize = 10
+  newWidth = Math.round(newWidth / gridSize) * gridSize
+  newHeight = Math.round(newHeight / gridSize) * gridSize
+
   const newSize = {
     width: newWidth,
     height: newHeight
   }
-  
+
   const updatedElement = {
     ...props.element,
     size: newSize
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -153,7 +167,7 @@ function stopResize() {
 .element {
   position: absolute;
   cursor: move;
-  
+
   &.selected {
     outline: 2px solid var(--primary);
   }
@@ -161,12 +175,12 @@ function stopResize() {
 
 .image-element {
   overflow: hidden;
-  
+
   .element-image {
     width: 100%;
     height: 100%;
   }
-  
+
   .image-placeholder {
     position: absolute;
     top: 0;

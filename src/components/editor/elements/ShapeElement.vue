@@ -185,9 +185,18 @@ function onDrag(event: MouseEvent) {
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
 
+  // Calculate new position
+  let newX = startLeft + deltaX
+  let newY = startTop + deltaY
+
+  // Snap to grid (10px grid)
+  const gridSize = 10
+  newX = Math.round(newX / gridSize) * gridSize
+  newY = Math.round(newY / gridSize) * gridSize
+
   const newPosition = {
-    x: startLeft + deltaX,
-    y: startTop + deltaY
+    x: newX,
+    y: newY
   }
 
   const updatedElement = {
@@ -221,9 +230,18 @@ function onResize(event: MouseEvent) {
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
 
+  // Calculate new size
+  let newWidth = Math.max(15, startWidth + deltaX)
+  let newHeight = Math.max(15, startHeight + deltaY)
+
+  // Snap to grid (10px grid)
+  const gridSize = 10
+  newWidth = Math.round(newWidth / gridSize) * gridSize
+  newHeight = Math.round(newHeight / gridSize) * gridSize
+
   const newSize = {
-    width: Math.max(15, startWidth + deltaX),
-    height: Math.max(15, startHeight + deltaY)
+    width: newWidth,
+    height: newHeight
   }
 
   const updatedElement = {

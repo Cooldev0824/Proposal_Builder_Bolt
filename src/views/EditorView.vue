@@ -2,6 +2,7 @@
   <div class="document-editor">
     <EditorToolbar
       :activeTools="activeTools"
+      :showGrid="showGrid"
       @tool-clicked="handleToolClick"
       @save="saveDocument"
     />
@@ -25,8 +26,14 @@
             :key="section.id"
             :section="section"
             :isActive="currentSection === index"
+            :showGrid="showGrid"
             @element-selected="selectElement"
             @element-updated="updateElement"
+            @move-element-up="moveElementUp"
+            @move-element-down="moveElementDown"
+            @move-element-to-top="moveElementToTop"
+            @move-element-to-bottom="moveElementToBottom"
+            @toggle-grid="toggleGrid"
             ref="documentPageRefs"
           />
         </div>
@@ -100,6 +107,7 @@ const activeTools = ref<string[]>([])
 const editorContainer = ref<HTMLElement | null>(null)
 const documentPageRefs = ref<any[]>([])
 const showRuler = ref(false)
+const showGrid = ref(true) // Show grid by default
 const zoom = ref(1)
 const showPreview = ref(false)
 const showLayerPanel = ref(true) // Always show layer panel
@@ -252,6 +260,10 @@ function handleToolClick(tool: string, value?: any) {
       showRuler.value = value
       break
 
+    case 'grid':
+      toggleGrid(value)
+      break
+
     case 'zoom-in':
       zoom.value = Math.min(2, zoom.value + 0.1)
       break
@@ -288,7 +300,7 @@ function handleToolClick(tool: string, value?: any) {
       addFormElement()
       break
 
-    case 'grid':
+    case 'grid-element':
       addGridElement()
       break
 
@@ -615,6 +627,37 @@ function moveElementToBottom(element: DocumentElement) {
     // Set this element's zIndex to be lower than the lowest
     const updatedElement = { ...element, zIndex: lowestZIndex - 1 }
     updateElement(updatedElement)
+  }
+}
+
+// Grid functions
+function toggleGrid(visible?: boolean) {
+  // If visible is provided, use it; otherwise toggle the current value
+  showGrid.value = visible !== undefined ? visible : !showGrid.value
+
+  console.log('Grid visibility toggled:', showGrid.value)
+
+  // Update all elements to snap to grid if grid is enabled
+  if (showGrid.value) {
+    document.sections.forEach(section => {
+      section.elements.forEach(element => {
+        // Snap element position to grid
+        const snappedPosition = {
+          x: Math.round(element.position.x / 10) * 10,
+          y: Math.round(element.position.y / 10) * 10
+        }
+
+        // Only update if position actually changed
+        if (snappedPosition.x !== element.position.x ||
+            snappedPosition.y !== element.position.y) {
+          const updatedElement = {
+            ...element,
+            position: snappedPosition
+          }
+          updateElement(updatedElement)
+        }
+      })
+    })
   }
 }
 

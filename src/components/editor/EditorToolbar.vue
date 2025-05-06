@@ -10,18 +10,18 @@
         <v-tooltip activator="parent" location="bottom">Redo</v-tooltip>
       </v-btn>
     </div>
-    
+
     <div class="toolbar-divider"></div>
-    
+
     <div class="toolbar-group">
       <v-btn icon @click="$emit('tool-clicked', 'add-page')" size="small">
         <v-icon>mdi-file-plus</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Page</v-tooltip>
       </v-btn>
     </div>
-    
+
     <div class="toolbar-divider"></div>
-    
+
     <div class="toolbar-group">
       <v-btn icon @click="$emit('tool-clicked', 'text')" size="small" :color="isActive('text') ? 'primary' : ''">
         <v-icon>mdi-format-text</v-icon>
@@ -52,15 +52,19 @@
         <v-tooltip activator="parent" location="bottom">Add Form</v-tooltip>
       </v-btn>
     </div>
-    
+
     <div class="toolbar-divider"></div>
-    
+
     <v-spacer></v-spacer>
-    
+
     <div class="toolbar-group">
       <v-btn icon @click="toggleRuler" size="small" :color="showRuler ? 'primary' : ''">
         <v-icon>mdi-ruler</v-icon>
         <v-tooltip activator="parent" location="bottom">Toggle Ruler</v-tooltip>
+      </v-btn>
+      <v-btn icon @click="toggleGrid" size="small" :color="showGrid ? 'primary' : ''">
+        <v-icon>mdi-grid</v-icon>
+        <v-tooltip activator="parent" location="bottom">Toggle Grid</v-tooltip>
       </v-btn>
       <v-btn icon @click="$emit('tool-clicked', 'zoom-in')" size="small">
         <v-icon>mdi-magnify-plus</v-icon>
@@ -71,9 +75,9 @@
         <v-tooltip activator="parent" location="bottom">Zoom Out</v-tooltip>
       </v-btn>
     </div>
-    
+
     <div class="toolbar-divider"></div>
-    
+
     <div class="toolbar-group">
       <v-btn color="primary" @click="$emit('save')">
         <v-icon left>mdi-content-save</v-icon>
@@ -88,13 +92,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useHistoryStore } from '../../stores/historyStore'
 
 const historyStore = useHistoryStore()
 
 const props = defineProps<{
   activeTools: string[]
+  showGrid?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -115,6 +120,15 @@ const textAlign = ref('left')
 
 // UI state
 const showRuler = ref(false)
+const showGrid = ref(true) // Default to true
+
+// Watch for changes to the showGrid prop
+watch(() => props.showGrid, (newValue) => {
+  if (newValue !== undefined) {
+    showGrid.value = newValue
+    console.log('Grid visibility updated in toolbar:', showGrid.value)
+  }
+}, { immediate: true })
 
 function isActive(tool: string) {
   return props.activeTools.includes(tool)
@@ -144,6 +158,15 @@ function toggleRuler() {
   showRuler.value = !showRuler.value
   emit('tool-clicked', 'ruler', showRuler.value)
 }
+
+function toggleGrid() {
+  // Toggle the grid visibility locally
+  showGrid.value = !showGrid.value
+  console.log('Grid toggled in toolbar:', showGrid.value)
+
+  // Emit the event to notify parent components
+  emit('tool-clicked', 'grid', showGrid.value)
+}
 </script>
 
 <style scoped lang="scss">
@@ -160,7 +183,7 @@ function toggleRuler() {
   display: flex;
   align-items: center;
   gap: 4px;
-  
+
   &.text-formatting {
     gap: 8px;
   }
@@ -192,7 +215,7 @@ function toggleRuler() {
     flex-wrap: wrap;
     gap: 8px;
   }
-  
+
   .toolbar-divider {
     display: none;
   }

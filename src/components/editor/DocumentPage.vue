@@ -4,25 +4,46 @@
     :class="{ active: isActive }"
     :style="pageStyle"
   >
-    <div class="page-header">
-      <h2 class="page-title">{{ section?.title || 'Untitled Section' }}</h2>
-    </div>
-
+    <GridOverlay
+      :visible="showGrid"
+      :width="pageWidth"
+      :height="pageHeight"
+      :grid-size="gridSize"
+      @toggle-grid="toggleGrid"
+    />
     <div class="page-content" ref="pageContent">
       <Suspense v-if="section?.elements && Array.isArray(section.elements)">
         <template #default>
           <div class="elements-container">
-            <component
-              v-for="element in sortedElements"
+            <div
+              v-for="(element, index) in sortedElements"
               :key="element.id"
-              :is="getElementComponent(element.type)"
-              :element="element"
-              :isSelected="selectedElement?.id === element.id"
-              @click.stop="selectElement(element)"
-              @update:element="updateElement"
-              ref="elementRefs"
+              class="element-wrapper"
               :style="{ zIndex: element.zIndex || 0 }"
-            />
+              @mouseenter="hoveredElement = element"
+              @mouseleave="hoveredElement = null"
+            >
+              <ElementLayerControls
+                v-if="showLayerControls && (hoveredElement?.id === element.id || selectedElement?.id === element.id)"
+                :element="element"
+                :elements="section.elements"
+                :layer-index="index"
+                :total-layers="sortedElements.length"
+                @move-up="moveElementUp"
+                @move-down="moveElementDown"
+                @move-to-top="moveElementToTop"
+                @move-to-bottom="moveElementToBottom"
+              />
+
+              <component
+                :is="getElementComponent(element.type)"
+                :element="element"
+                :isSelected="selectedElement?.id === element.id"
+                @click.stop="selectElement(element)"
+                @update:element="updateElement"
+                ref="elementRefs"
+              />
+            </div>
           </div>
         </template>
         <template #fallback>
@@ -38,8 +59,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent, onErrorCaptured } from 'vue'
+import { ref, computed, defineAsyncComponent, onErrorCaptured, watch } from 'vue'
 import { Section, DocumentElement } from '../../types/document'
+import ElementLayerControls from './ElementLayerControls.vue'
+import GridOverlay from './GridOverlay.vue'
 
 // Lazy-loaded element components with error handling
 const TextElement = defineAsyncComponent({
@@ -98,24 +121,49 @@ const GridBlockElement = defineAsyncComponent({
   }
 })
 
-const { section, isActive } = defineProps<{
+const props = defineProps<{
   section: Section
   isActive: boolean
+  showGrid?: boolean
 }>()
+
+const { section, isActive } = props
 
 const emit = defineEmits<{
   (e: 'element-selected', element: DocumentElement | null): void
   (e: 'element-updated', element: DocumentElement): void
+  (e: 'move-element-up', element: DocumentElement): void
+  (e: 'move-element-down', element: DocumentElement): void
+  (e: 'move-element-to-top', element: DocumentElement): void
+  (e: 'move-element-to-bottom', element: DocumentElement): void
+  (e: 'toggle-grid', visible: boolean): void
 }>()
 
 const pageContent = ref<HTMLElement | null>(null)
 const selectedElement = ref<DocumentElement | null>(null)
+const hoveredElement = ref<DocumentElement | null>(null)
 const elementRefs = ref<any[]>([])
+const showLayerControls = ref(true) // Always show layer controls
+const showGrid = ref(true) // Default to true, will be updated when props change
+const gridSize = ref(10) // Grid size in pixels (each small square is 10px)
+
+// Page dimensions in pixels (8.5in x 11in at 96dpi)
+const pageWidth = ref(816) // 8.5 inches * 96dpi
+const pageHeight = ref(1056) // 11 inches * 96dpi
+
+// Watch for changes to the showGrid prop
+watch(() => props.showGrid, (newValue) => {
+  if (newValue !== undefined) {
+    showGrid.value = newValue
+    console.log('Grid visibility updated from prop:', showGrid.value)
+  }
+}, { immediate: true })
 
 const pageStyle = computed(() => {
   return {
-    width: '8.5in',
-    minHeight: '11in'
+    width: `${pageWidth.value}px`,
+    minHeight: `${pageHeight.value}px`,
+    position: 'relative'
   }
 })
 
@@ -163,6 +211,41 @@ function updateElement(element: DocumentElement) {
   emit('element-updated', element)
 }
 
+// Layer control functions
+function moveElementUp(element: DocumentElement) {
+  emit('move-element-up', element)
+}
+
+function moveElementDown(element: DocumentElement) {
+  emit('move-element-down', element)
+}
+
+function moveElementToTop(element: DocumentElement) {
+  emit('move-element-to-top', element)
+}
+
+function moveElementToBottom(element: DocumentElement) {
+  emit('move-element-to-bottom', element)
+}
+
+// Grid functions
+function toggleGrid() {
+  // Toggle the grid visibility
+  showGrid.value = !showGrid.value
+  console.log('Grid toggled in DocumentPage:', showGrid.value)
+
+  // Emit the event to notify parent components
+  emit('toggle-grid', showGrid.value)
+}
+
+// Function to snap position to grid
+function snapToGrid(position: { x: number, y: number }) {
+  return {
+    x: Math.round(position.x / gridSize.value) * gridSize.value,
+    y: Math.round(position.y / gridSize.value) * gridSize.value
+  }
+}
+
 // Text selection is now handled by the global selection manager
 
 // Expose methods to parent components
@@ -184,6 +267,8 @@ onErrorCaptured((error, instance, info) => {
   margin: 16px auto;
   transition: transform 0.2s ease;
   position: relative;
+  padding-top: 30px; /* Space for horizontal ruler */
+  padding-left: 30px; /* Space for vertical ruler */
 
   &.active {
     transform: translateY(-2px);
@@ -191,26 +276,25 @@ onErrorCaptured((error, instance, info) => {
   }
 }
 
-.page-header {
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 500;
-  margin: 0;
-}
-
 .page-content {
   position: relative;
-  min-height: 800px;
+  min-height: 100%;
   padding: 24px;
+  background-color: white;
+  box-sizing: border-box;
 }
 
 .elements-container {
   position: relative;
   min-height: inherit;
+}
+
+.element-wrapper {
+  position: relative;
+
+  &:hover {
+    z-index: 1000 !important; // Ensure layer controls are visible when hovering
+  }
 }
 
 .empty-page {
