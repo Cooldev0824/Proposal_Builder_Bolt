@@ -911,15 +911,15 @@ onMounted(() => {
   // Other onMounted code...
 
   // Set up autosave
-  autoSaveTimer = window.setInterval(() => {
-    const timeSinceLastEdit = Date.now() - lastEdit.value;
+  // autoSaveTimer = window.setInterval(() => {
+  //   const timeSinceLastEdit = Date.now() - lastEdit.value;
 
-    // Only autosave if there have been changes and no save is in progress
-    if (timeSinceLastEdit < autoSaveInterval && !isSaving.value) {
-      console.log("Auto-saving document...");
-      saveDocument();
-    }
-  }, autoSaveInterval);
+  //   // Only autosave if there have been changes and no save is in progress
+  //   if (timeSinceLastEdit < autoSaveInterval && !isSaving.value) {
+  //     console.log("Auto-saving document...");
+  //     saveDocument();
+  //   }
+  // }, autoSaveInterval);
 
   // Add keyboard shortcut for save
   window.addEventListener("keydown", handleKeyDown);
