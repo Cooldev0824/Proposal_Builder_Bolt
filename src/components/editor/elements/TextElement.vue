@@ -231,10 +231,33 @@ function handleTextChange(event: Event) {
   const selection = window.getSelection()
   if (!selection || !selection.rangeCount) return
 
-  // Save the current selection state
+  // Save the current selection state with more detailed information
   const range = selection.getRangeAt(0)
   const container = range.endContainer
   const offset = range.endOffset
+
+  // Save the path to the node for more reliable restoration
+  const nodePath = getNodePath(container)
+
+  // Save text before and after cursor for text-based restoration
+  let textBeforeCursor = ''
+  let textAfterCursor = ''
+
+  try {
+    // Create a range from the start of the content to the cursor
+    const beforeRange = document.createRange()
+    beforeRange.setStart(contentElement.value, 0)
+    beforeRange.setEnd(range.endContainer, range.endOffset)
+    textBeforeCursor = beforeRange.toString()
+
+    // Create a range from the cursor to the end of the content
+    const afterRange = document.createRange()
+    afterRange.setStart(range.endContainer, range.endOffset)
+    afterRange.setEnd(contentElement.value, contentElement.value.childNodes.length)
+    textAfterCursor = afterRange.toString()
+  } catch (error) {
+    console.error('Error getting text around cursor:', error)
+  }
 
   // Update the element content
   const updatedElement = {
@@ -248,56 +271,170 @@ function handleTextChange(event: Event) {
   // Restore cursor position after Vue updates the DOM
   setTimeout(() => {
     try {
-      // Focus the element
-      contentElement.value?.focus()
+      if (!contentElement.value) {
+        isUpdating = false
+        return
+      }
 
-      // Check if the container is still in the document
-      if (container && contentElement.value?.contains(container)) {
+      // Focus the element
+      contentElement.value.focus()
+
+      // First try to restore using the original container reference
+      if (container && contentElement.value.contains(container)) {
         // Create a new range at the saved position
         const newRange = document.createRange()
-        newRange.setStart(container, offset)
-        newRange.setEnd(container, offset)
+
+        // Ensure the offset is valid for the container
+        const maxOffset = container.nodeType === Node.TEXT_NODE
+          ? (container.textContent?.length || 0)
+          : container.childNodes.length
+
+        const safeOffset = Math.min(offset, maxOffset)
+
+        newRange.setStart(container, safeOffset)
+        newRange.setEnd(container, safeOffset)
 
         // Apply the selection
         selection.removeAllRanges()
         selection.addRange(newRange)
+
+        console.log('Cursor restored using direct container reference')
+      }
+      // If that fails, try using the node path
+      else if (nodePath) {
+        const nodeAtPath = findNodeAtPath(nodePath)
+        if (nodeAtPath) {
+          // Create a new range at the saved position
+          const newRange = document.createRange()
+
+          // Ensure the offset is valid for the node
+          const maxOffset = nodeAtPath.nodeType === Node.TEXT_NODE
+            ? (nodeAtPath.textContent?.length || 0)
+            : nodeAtPath.childNodes.length
+
+          const safeOffset = Math.min(offset, maxOffset)
+
+          newRange.setStart(nodeAtPath, safeOffset)
+          newRange.setEnd(nodeAtPath, safeOffset)
+
+          // Apply the selection
+          selection.removeAllRanges()
+          selection.addRange(newRange)
+
+          console.log('Cursor restored using node path')
+        }
+        // If node path fails, try text-based approach
+        else if (textBeforeCursor) {
+          // Get all text nodes
+          const textNodes = []
+          const walker = document.createTreeWalker(
+            contentElement.value,
+            NodeFilter.SHOW_TEXT,
+            null
+          )
+
+          let node
+          while (node = walker.nextNode()) {
+            textNodes.push(node)
+          }
+
+          if (textNodes.length > 0) {
+            // Combine all text content
+            let fullText = ''
+            const nodePositions = []
+
+            textNodes.forEach(node => {
+              const startPos = fullText.length
+              fullText += node.textContent
+              const endPos = fullText.length
+
+              nodePositions.push({
+                node,
+                startPos,
+                endPos
+              })
+            })
+
+            // Find the position in the full text that matches our cursor position
+            const cursorPos = textBeforeCursor.length
+
+            // Find which node contains the cursor position
+            let targetNode = null
+            let targetOffset = 0
+
+            for (const pos of nodePositions) {
+              if (cursorPos >= pos.startPos && cursorPos <= pos.endPos) {
+                targetNode = pos.node
+                targetOffset = cursorPos - pos.startPos
+                break
+              }
+            }
+
+            // If we found a node, set the cursor position
+            if (targetNode) {
+              const newRange = document.createRange()
+              newRange.setStart(targetNode, targetOffset)
+              newRange.setEnd(targetNode, targetOffset)
+              selection.removeAllRanges()
+              selection.addRange(newRange)
+              console.log('Cursor restored using text content approach')
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error restoring selection:', error)
     } finally {
       isUpdating = false
     }
-  }, 0)
+  }, 10)
 }
 
 // Handle key down events
 function handleKeyDown(event: KeyboardEvent) {
-  // Handle Enter key press
-  if (event.key === 'Enter' && !event.shiftKey) {
+  // Handle Enter key press (both with and without Shift)
+  // We treat all Enter key presses as Shift+Enter (inserting a line break instead of a paragraph)
+  if (event.key === 'Enter') {
     event.preventDefault()
     event.stopPropagation() // Prevent event bubbling
 
     if (!contentElement.value) return
 
-    // Simple approach: insert a <br> element directly
+    // Get the current selection
     const selection = window.getSelection()
     if (!selection || !selection.rangeCount) return
 
     // Get the current range
     const range = selection.getRangeAt(0)
 
+    // Save the current cursor position information
+    const cursorContainer = range.endContainer;
+    const cursorOffset = range.endOffset;
+
     // Create a <br> element
     const br = document.createElement('br')
+
+    // Also create a text node with a zero-width space to ensure cursor positioning works
+    const textNode = document.createTextNode('\u200B')
 
     // Insert the <br> element
     range.deleteContents()
     range.insertNode(br)
 
-    // Move the cursor after the <br>
-    range.setStartAfter(br)
-    range.setEndAfter(br)
+    // Insert the text node after the <br>
+    const newRange = document.createRange()
+    newRange.setStartAfter(br)
+    newRange.setEndAfter(br)
+    newRange.insertNode(textNode)
+
+    // Move the cursor after the text node
+    newRange.setStartAfter(textNode)
+    newRange.setEndAfter(textNode)
     selection.removeAllRanges()
-    selection.addRange(range)
+    selection.addRange(newRange)
+
+    // Flag to prevent cursor position from being overwritten
+    isUpdating = true
 
     // Update the element content
     const updatedElement = {
@@ -308,8 +445,42 @@ function handleKeyDown(event: KeyboardEvent) {
     // Emit the update
     emit('update:element', updatedElement)
 
-    // Make sure the element stays focused
-    contentElement.value.focus()
+    // Restore cursor position after Vue updates the DOM
+    setTimeout(() => {
+      try {
+        if (!contentElement.value) {
+          isUpdating = false
+          return
+        }
+
+        // Focus the element
+        contentElement.value.focus()
+
+        // Find the <br> element we just inserted
+        const allBrs = contentElement.value.querySelectorAll('br')
+        if (allBrs.length > 0) {
+          // Get the last <br> element (the one we just inserted)
+          const lastBr = allBrs[allBrs.length - 1]
+
+          // Create a range after this <br>
+          const restoreRange = document.createRange()
+          restoreRange.setStartAfter(lastBr)
+          restoreRange.setEndAfter(lastBr)
+
+          // Apply the selection
+          selection.removeAllRanges()
+          selection.addRange(restoreRange)
+
+          console.log('Cursor position restored after Enter key press')
+        } else {
+          console.warn('Could not find the inserted <br> element')
+        }
+      } catch (error) {
+        console.error('Error restoring cursor position after Enter key press:', error)
+      } finally {
+        isUpdating = false
+      }
+    }, 10)
 
     // Prevent default behavior
     return false
@@ -768,6 +939,8 @@ onBeforeUnmount(() => {
       content: "";
       margin-top: 0;
       line-height: inherit;
+      min-height: 1.5em; /* Ensure line breaks have consistent height */
+      user-select: none; /* Prevent selection of line breaks */
     }
 
     /* Ensure empty lines are visible */
@@ -802,6 +975,12 @@ onBeforeUnmount(() => {
       display: inline;
       vertical-align: baseline;
       line-height: normal;
+    }
+
+    /* Handle zero-width spaces used for cursor positioning */
+    &:after br {
+      content: "";
+      white-space: pre;
     }
   }
 }
