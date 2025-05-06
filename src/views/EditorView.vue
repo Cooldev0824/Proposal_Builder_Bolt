@@ -1,37 +1,38 @@
 <template>
   <div class="document-editor">
-    <EditorToolbar 
-      :activeTools="activeTools" 
-      @tool-clicked="handleToolClick" 
+    <EditorToolbar
+      :activeTools="activeTools"
+      @tool-clicked="handleToolClick"
       @save="saveDocument"
     />
-    
+
     <div class="editor-container">
-      <SidebarNavigation 
-        :sections="document.sections" 
+      <SidebarNavigation
+        :sections="document.sections"
         :currentSection="currentSection"
         @section-selected="selectSection"
         @section-added="addSection"
         @section-updated="updateSection"
         @section-deleted="deleteSection"
       />
-      
+
       <div class="main-editor" ref="editorContainer">
         <Ruler :visible="showRuler" :zoom="zoom" />
-        
+
         <div class="editor-content" :style="editorContentStyle">
-          <DocumentPage 
-            v-for="(section, index) in document?.sections && document?.sections.length > 0 ? document.sections : []" 
+          <DocumentPage
+            v-for="(section, index) in document?.sections && document?.sections.length > 0 ? document.sections : []"
             :key="section.id"
             :section="section"
             :isActive="currentSection === index"
             @element-selected="selectElement"
             @element-updated="updateElement"
+            ref="documentPageRefs"
           />
         </div>
       </div>
-      
-      <PropertiesPanel 
+
+      <PropertiesPanel
         v-if="selectedElement"
         :selectedElement="selectedElement"
         @update:element="updateElement"
@@ -76,6 +77,7 @@ const currentSection = ref(0)
 const selectedElement = ref<DocumentElement | null>(null)
 const activeTools = ref<string[]>([])
 const editorContainer = ref<HTMLElement | null>(null)
+const documentPageRefs = ref<any[]>([])
 const showRuler = ref(false)
 const zoom = ref(1)
 const showPreview = ref(false)
@@ -151,12 +153,12 @@ function selectElement(element: DocumentElement) {
 }
 
 function updateElement(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s => 
+  const sectionIndex = document.sections.findIndex(s =>
     s.elements.some(e => e.id === element.id)
   )
-  
+
   if (sectionIndex >= 0) {
-    const elementIndex = document.sections[sectionIndex].elements.findIndex(e => 
+    const elementIndex = document.sections[sectionIndex].elements.findIndex(e =>
       e.id === element.id
     )
     if (elementIndex >= 0) {
@@ -166,10 +168,10 @@ function updateElement(element: DocumentElement) {
 }
 
 function deleteElement(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s => 
+  const sectionIndex = document.sections.findIndex(s =>
     s.elements.some(e => e.id === element.id)
   )
-  
+
   if (sectionIndex >= 0) {
     document.sections[sectionIndex].elements = document.sections[sectionIndex].elements.filter(
       e => e.id !== element.id
@@ -187,21 +189,23 @@ function duplicateElement(element: DocumentElement) {
       y: element.position.y + 20
     }
   }
-  
+
   document.sections[currentSection.value].elements.push(newElement)
   selectedElement.value = newElement
 }
+
+// Text selection is now handled by the global selection manager
 
 function handleToolClick(tool: string, value?: any) {
   switch (tool) {
     case 'undo':
       handleUndo()
       break
-      
+
     case 'redo':
       handleRedo()
       break
-      
+
     case 'add-page':
       addSection({
         id: 'section-' + Date.now(),
@@ -209,51 +213,51 @@ function handleToolClick(tool: string, value?: any) {
         elements: []
       })
       break
-      
+
     case 'ruler':
       showRuler.value = value
       break
-      
+
     case 'zoom-in':
       zoom.value = Math.min(2, zoom.value + 0.1)
       break
-      
+
     case 'zoom-out':
       zoom.value = Math.max(0.5, zoom.value - 0.1)
       break
-      
+
     case 'text':
       addTextElement()
       break
-      
+
     case 'image':
       addImageElement()
       break
-      
+
     case 'shape':
       addShapeElement()
       break
-      
+
     case 'line':
       addLineElement()
       break
-      
+
     case 'table':
       addTableElement()
       break
-      
+
     case 'signature':
       addSignatureElement()
       break
-      
+
     case 'form':
       addFormElement()
       break
-      
+
     case 'grid':
       addGridElement()
       break
-      
+
     case 'preview':
       showPreview.value = true
       break

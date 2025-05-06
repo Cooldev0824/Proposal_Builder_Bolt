@@ -1,7 +1,7 @@
 <template>
   <div class="property-group">
     <div class="property-group-title">Text Properties</div>
-    
+
     <v-select
       v-model="textStyle"
       label="Text Style"
@@ -12,7 +12,7 @@
       class="mb-4"
       @update:model-value="updateTextStyle"
     ></v-select>
-    
+
     <v-select
       v-model="fontFamily"
       label="Font Family"
@@ -21,9 +21,10 @@
       variant="outlined"
       hide-details
       class="mb-4"
-      @update:model-value="updateFontFamily"
+      @blur="updateFontFamily"
+      @change="updateFontFamily"
     ></v-select>
-    
+
     <v-text-field
       v-model.number="fontSize"
       label="Font Size"
@@ -32,38 +33,39 @@
       variant="outlined"
       hide-details
       class="mb-4"
-      @update:model-value="updateFontSize"
+      @blur="updateFontSize"
+      @keydown.enter="updateFontSize"
     ></v-text-field>
-    
+
     <div class="property-row">
       <v-btn
         :color="bold ? 'primary' : undefined"
         icon
         size="small"
-        @click="toggleBold"
+        @click="toggleBoldStyle"
       >
         <v-icon>mdi-format-bold</v-icon>
       </v-btn>
-      
+
       <v-btn
         :color="italic ? 'primary' : undefined"
         icon
         size="small"
-        @click="toggleItalic"
+        @click="toggleItalicStyle"
       >
         <v-icon>mdi-format-italic</v-icon>
       </v-btn>
-      
+
       <v-btn
         :color="underline ? 'primary' : undefined"
         icon
         size="small"
-        @click="toggleUnderline"
+        @click="toggleUnderlineStyle"
       >
         <v-icon>mdi-format-underline</v-icon>
       </v-btn>
     </div>
-    
+
     <div class="property-row mt-4">
       <v-btn
         :color="textAlign === 'left' ? 'primary' : undefined"
@@ -73,7 +75,7 @@
       >
         <v-icon>mdi-format-align-left</v-icon>
       </v-btn>
-      
+
       <v-btn
         :color="textAlign === 'center' ? 'primary' : undefined"
         icon
@@ -82,7 +84,7 @@
       >
         <v-icon>mdi-format-align-center</v-icon>
       </v-btn>
-      
+
       <v-btn
         :color="textAlign === 'right' ? 'primary' : undefined"
         icon
@@ -91,7 +93,7 @@
       >
         <v-icon>mdi-format-align-right</v-icon>
       </v-btn>
-      
+
       <v-btn
         :color="textAlign === 'justify' ? 'primary' : undefined"
         icon
@@ -101,12 +103,12 @@
         <v-icon>mdi-format-align-justify</v-icon>
       </v-btn>
     </div>
-    
+
     <v-divider class="my-4"></v-divider>
-    
+
     <div class="colors-section">
       <div class="property-group-subtitle mb-2">Colors</div>
-      
+
       <div class="color-row mb-2">
         <v-text-field
           v-model="textColor"
@@ -116,9 +118,10 @@
           variant="outlined"
           hide-details
           class="color-input"
-          @update:model-value="updateTextColor"
+          @blur="updateTextColor"
+          @change="updateTextColor"
         ></v-text-field>
-        
+
         <v-text-field
           v-model="backgroundColor"
           label="Background"
@@ -127,13 +130,14 @@
           variant="outlined"
           hide-details
           class="color-input"
-          @update:model-value="updateBackgroundColor"
+          @blur="updateBackgroundColor"
+          @change="updateBackgroundColor"
         ></v-text-field>
       </div>
-      
+
       <div class="color-presets">
-        <div 
-          v-for="color in colorPresets" 
+        <div
+          v-for="color in colorPresets"
           :key="color"
           class="color-preset"
           :style="{ backgroundColor: color }"
@@ -147,6 +151,17 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { DocumentElement } from '../../../types/document'
+import {
+  hasSavedSelection,
+  applyBold,
+  applyItalic,
+  applyUnderline,
+  applyFontFamily,
+  applyFontSize,
+  applyTextColor,
+  applyBackgroundColor,
+  applyTextAlignment
+} from '../../../utils/selectionManager'
 
 const props = defineProps<{
   element: DocumentElement
@@ -193,6 +208,8 @@ function updateElement(updates: Partial<typeof props.element.style>) {
   })
 }
 
+// Use the hasTextSelection prop to determine if text is selected
+
 function updateTextStyle() {
   const updates = {
     textStyle: textStyle.value,
@@ -205,39 +222,91 @@ function updateTextStyle() {
 }
 
 function updateFontFamily() {
-  updateElement({ fontFamily: fontFamily.value })
+  console.log('TextProperties: updateFontFamily')
+  if (hasSavedSelection()) {
+    applyFontFamily(fontFamily.value)
+  } else {
+    updateElement({ fontFamily: fontFamily.value })
+  }
 }
 
 function updateFontSize() {
-  updateElement({ fontSize: fontSize.value })
+  console.log('TextProperties: updateFontSize', fontSize.value)
+
+  // Check if there's a text selection
+  const hasSelection = hasSavedSelection()
+  console.log('Has saved selection:', hasSelection)
+
+  if (hasSelection) {
+    // Apply font size to selected text only
+    const success = applyFontSize(Number(fontSize.value))
+    console.log('Applied font size to selection:', success)
+
+    // The content will be updated by the TextElement component's mutation observer
+    // No need to manually update the element here
+  } else {
+    // Apply font size to the whole element
+    console.log('Applying font size to whole element:', fontSize.value)
+    updateElement({ fontSize: fontSize.value })
+  }
 }
 
-function toggleBold() {
+function toggleBoldStyle() {
   bold.value = !bold.value
-  updateElement({ bold: bold.value })
+  console.log('TextProperties: toggleBold')
+  if (hasSavedSelection()) {
+    applyBold()
+  } else {
+    updateElement({ bold: bold.value })
+  }
 }
 
-function toggleItalic() {
+function toggleItalicStyle() {
   italic.value = !italic.value
-  updateElement({ italic: italic.value })
+  console.log('TextProperties: toggleItalic')
+  if (hasSavedSelection()) {
+    applyItalic()
+  } else {
+    updateElement({ italic: italic.value })
+  }
 }
 
-function toggleUnderline() {
+function toggleUnderlineStyle() {
   underline.value = !underline.value
-  updateElement({ underline: underline.value })
+  console.log('TextProperties: toggleUnderline')
+  if (hasSavedSelection()) {
+    applyUnderline()
+  } else {
+    updateElement({ underline: underline.value })
+  }
 }
 
 function setTextAlign(align: string) {
   textAlign.value = align
-  updateElement({ align })
+  console.log('TextProperties: setTextAlign')
+  if (hasSavedSelection()) {
+    applyTextAlignment(align as 'left' | 'center' | 'right' | 'justify')
+  } else {
+    updateElement({ align })
+  }
 }
 
 function updateTextColor() {
-  updateElement({ color: textColor.value })
+  console.log('TextProperties: updateTextColor')
+  if (hasSavedSelection()) {
+    applyTextColor(textColor.value)
+  } else {
+    updateElement({ color: textColor.value })
+  }
 }
 
 function updateBackgroundColor() {
-  updateElement({ backgroundColor: backgroundColor.value })
+  console.log('TextProperties: updateBackgroundColor')
+  if (hasSavedSelection()) {
+    applyBackgroundColor(backgroundColor.value)
+  } else {
+    updateElement({ backgroundColor: backgroundColor.value })
+  }
 }
 
 function selectColor(color: string) {
@@ -262,7 +331,7 @@ function selectColor(color: string) {
 .color-row {
   display: flex;
   gap: 8px;
-  
+
   .color-input {
     flex: 1;
   }
@@ -281,7 +350,7 @@ function selectColor(color: string) {
   border: 1px solid var(--border);
   cursor: pointer;
   transition: transform 0.2s ease;
-  
+
   &:hover {
     transform: scale(1.1);
   }

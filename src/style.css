@@ -77,3 +77,22 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Ensure text selection is visible */
+::selection {
+  background-color: #b3d4fc;
+  color: #000;
+  text-shadow: none;
+}
+
+/* Ensure contenteditable elements maintain selection */
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+/* Ensure selection is preserved during style changes */
+[contenteditable]:focus {
+  outline: none;
+}

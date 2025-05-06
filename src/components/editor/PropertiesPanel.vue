@@ -6,14 +6,14 @@
         <v-icon>mdi-close</v-icon>
       </v-btn>
     </div>
-    
+
     <div class="panel-content">
       <div class="element-type">
         {{ formatElementType(selectedElement.type) }}
       </div>
-      
+
       <v-divider class="my-4"></v-divider>
-      
+
       <!-- Position and size controls -->
       <div class="property-group">
         <div class="property-group-title">Position & Size</div>
@@ -62,18 +62,18 @@
           ></v-text-field>
         </div>
       </div>
-      
+
       <v-divider class="my-4"></v-divider>
-      
+
       <!-- Element-specific properties -->
-      <component 
+      <component
         :is="getPropertiesComponent(selectedElement.type)"
         :element="selectedElement"
         @update:element="updateElement"
       />
-      
+
       <v-divider class="my-4"></v-divider>
-      
+
       <!-- Actions -->
       <div class="property-group">
         <div class="property-group-title">Actions</div>
@@ -150,23 +150,23 @@ function formatElementType(type: string): string {
 
 function updatePosition() {
   if (!props.selectedElement) return
-  
+
   const updatedElement = {
     ...props.selectedElement,
     position: { ...position.value }
   }
-  
+
   emit('update:element', updatedElement)
 }
 
 function updateSize() {
   if (!props.selectedElement) return
-  
+
   const updatedElement = {
     ...props.selectedElement,
     size: { ...size.value }
   }
-  
+
   emit('update:element', updatedElement)
 }
 

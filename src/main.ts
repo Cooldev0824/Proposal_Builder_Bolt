@@ -17,6 +17,9 @@ import routes from './router'
 // Global styles
 import './assets/styles/main.scss'
 
+// Initialize selection tracking
+import { initSelectionTracking } from './utils/selectionManager'
+
 const vuetify = createVuetify({
   components,
   directives,
@@ -50,6 +53,9 @@ const router = createRouter({
 })
 
 const pinia = createPinia()
+
+// Initialize selection tracking
+initSelectionTracking()
 
 createApp(App)
   .use(router)

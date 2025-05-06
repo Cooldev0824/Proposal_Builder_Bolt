@@ -1,18 +1,18 @@
 <template>
-  <div 
-    class="document-page" 
+  <div
+    class="document-page"
     :class="{ active: isActive }"
     :style="pageStyle"
   >
     <div class="page-header">
       <h2 class="page-title">{{ section?.title || 'Untitled Section' }}</h2>
     </div>
-    
+
     <div class="page-content" ref="pageContent">
       <Suspense v-if="section?.elements && Array.isArray(section.elements)">
         <template #default>
           <div class="elements-container">
-            <component 
+            <component
               v-for="element in section.elements"
               :key="element.id"
               :is="getElementComponent(element.type)"
@@ -20,6 +20,7 @@
               :isSelected="selectedElement?.id === element.id"
               @click.stop="selectElement(element)"
               @update:element="updateElement"
+              ref="elementRefs"
             />
           </div>
         </template>
@@ -27,7 +28,7 @@
           <div class="loading">Loading elements...</div>
         </template>
       </Suspense>
-      
+
       <div v-if="!section || !section?.elements || !Array.isArray(section.elements) || !section.elements?.length" class="empty-page">
         <p>This section is empty. Add elements from the toolbar above.</p>
       </div>
@@ -96,7 +97,7 @@ const GridBlockElement = defineAsyncComponent({
   }
 })
 
-const props = defineProps<{
+const { section, isActive } = defineProps<{
   section: Section
   isActive: boolean
 }>()
@@ -108,6 +109,7 @@ const emit = defineEmits<{
 
 const pageContent = ref<HTMLElement | null>(null)
 const selectedElement = ref<DocumentElement | null>(null)
+const elementRefs = ref<any[]>([])
 
 const pageStyle = computed(() => {
   return {
@@ -147,6 +149,13 @@ function updateElement(element: DocumentElement) {
   emit('element-updated', element)
 }
 
+// Text selection is now handled by the global selection manager
+
+// Expose methods to parent components
+defineExpose({
+  // No special methods needed anymore
+})
+
 // Global error handler for async components
 onErrorCaptured((error, instance, info) => {
   console.error('Component error:', error, instance, info)
@@ -161,7 +170,7 @@ onErrorCaptured((error, instance, info) => {
   margin: 16px auto;
   transition: transform 0.2s ease;
   position: relative;
-  
+
   &.active {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
@@ -198,7 +207,7 @@ onErrorCaptured((error, instance, info) => {
   color: var(--text-secondary);
   border: 2px dashed var(--border);
   border-radius: 8px;
-  
+
   p {
     font-size: 16px;
     text-align: center;
