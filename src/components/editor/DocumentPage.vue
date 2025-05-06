@@ -13,7 +13,7 @@
         <template #default>
           <div class="elements-container">
             <component
-              v-for="element in section.elements"
+              v-for="element in sortedElements"
               :key="element.id"
               :is="getElementComponent(element.type)"
               :element="element"
@@ -21,6 +21,7 @@
               @click.stop="selectElement(element)"
               @update:element="updateElement"
               ref="elementRefs"
+              :style="{ zIndex: element.zIndex || 0 }"
             />
           </div>
         </template>
@@ -116,6 +117,19 @@ const pageStyle = computed(() => {
     width: '8.5in',
     minHeight: '11in'
   }
+})
+
+// Sort elements by zIndex for proper layering
+const sortedElements = computed(() => {
+  if (!section?.elements) return []
+
+  // Make a copy of the elements array to avoid modifying the original
+  return [...section.elements].sort((a, b) => {
+    // Default zIndex to 0 if not set
+    const zIndexA = a.zIndex ?? 0
+    const zIndexB = b.zIndex ?? 0
+    return zIndexA - zIndexB
+  })
 })
 
 function getElementComponent(type: string) {

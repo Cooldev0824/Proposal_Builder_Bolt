@@ -1,19 +1,27 @@
 <template>
-  <div 
+  <div
     class="shape-element element"
     :class="{ selected: isSelected }"
     :style="elementStyle"
     @mousedown.stop="startDrag"
   >
     <div class="shape-container">
-      <svg 
-        :width="svgSize.width" 
-        :height="svgSize.height" 
-        :style="svgStyle"
+      <svg
+        :width="svgSize.width"
+        :height="svgSize.height"
+        :style="{
+          position: 'absolute',
+          left: `-${(svgSize.width - width)/2}px`,
+          top: `-${(svgSize.height - height)/2}px`,
+          overflow: 'visible',
+          pointerEvents: 'none',
+          display: 'block'
+        }"
         :viewBox="`0 0 ${svgSize.width} ${svgSize.height}`"
+        xmlns="http://www.w3.org/2000/svg"
       >
         <g :transform="`translate(${svgSize.width/2} ${svgSize.height/2}) rotate(${rotation}) translate(${-width/2} ${-height/2})`">
-          <component 
+          <component
             :is="getShapeComponent()"
             :style="shapeStyle"
           />
@@ -26,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, h } from 'vue'
+import { computed, h } from 'vue'
 import { DocumentElement } from '../../../types/document'
 
 const props = defineProps<{
@@ -77,22 +85,10 @@ const elementStyle = computed(() => {
   }
 })
 
-const svgStyle = computed(() => {
-  const offsetX = (svgSize.value.width - width.value) / 2
-  const offsetY = (svgSize.value.height - height.value) / 2
-  return {
-    position: 'absolute',
-    left: `-${offsetX}px`,
-    top: `-${offsetY}px`,
-    overflow: 'visible',
-    pointerEvents: 'none'
-  }
-})
-
 const shapeStyle = computed(() => {
   const style = props.element.style || {}
   let strokeDasharray = 'none'
-  
+
   if (props.element.content === 'line' && style.lineStyle) {
     switch (style.lineStyle) {
       case 'dashed':
@@ -105,19 +101,24 @@ const shapeStyle = computed(() => {
         strokeDasharray = 'none'
     }
   }
-  
+
+  // Ensure fill is never undefined for PDF export
+  const fillColor = style.fill || 'none'
+
   return {
-    fill: style.fill || 'none',
+    fill: fillColor,
     stroke: style.stroke || '#000000',
     strokeWidth: `${style.strokeWidth || 1}px`,
     strokeDasharray,
-    opacity: style.opacity || 1
+    opacity: style.opacity || 1,
+    // Add vector-effect to ensure consistent stroke width
+    vectorEffect: 'non-scaling-stroke'
   }
 })
 
 function getShapeComponent() {
   const shapeType = props.element.content
-  
+
   switch (shapeType) {
     case 'rectangle':
       return h('rect', {
@@ -173,27 +174,27 @@ function startDrag(event: MouseEvent) {
   startY = event.clientY
   startLeft = props.element.position.x
   startTop = props.element.position.y
-  
+
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newPosition = {
     x: startLeft + deltaX,
     y: startTop + deltaY
   }
-  
+
   const updatedElement = {
     ...props.element,
     position: newPosition
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -209,27 +210,27 @@ function startResize(event: MouseEvent) {
   startY = event.clientY
   startWidth = props.element.size.width
   startHeight = props.element.size.height
-  
+
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
 }
 
 function onResize(event: MouseEvent) {
   if (!isResizing) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newSize = {
-    width: Math.max(30, startWidth + deltaX),
-    height: Math.max(30, startHeight + deltaY)
+    width: Math.max(15, startWidth + deltaX),
+    height: Math.max(15, startHeight + deltaY)
   }
-  
+
   const updatedElement = {
     ...props.element,
     size: newSize
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -243,28 +244,28 @@ function startRotate(event: MouseEvent) {
   isRotating = true
   const rect = (event.target as HTMLElement).closest('.shape-element')?.getBoundingClientRect()
   if (!rect) return
-  
+
   const centerX = rect.left + rect.width / 2
   const centerY = rect.top + rect.height / 2
   startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX)
-  
+
   document.addEventListener('mousemove', onRotate)
   document.addEventListener('mouseup', stopRotate)
 }
 
 function onRotate(event: MouseEvent) {
   if (!isRotating) return
-  
+
   const rect = (event.target as HTMLElement).closest('.shape-element')?.getBoundingClientRect()
   if (!rect) return
-  
+
   const centerX = rect.left + rect.width / 2
   const centerY = rect.top + rect.height / 2
   const angle = Math.atan2(event.clientY - centerY, event.clientX - centerX)
-  
+
   let newRotation = ((angle - startAngle) * (180 / Math.PI) + (props.element.style?.rotation || 0)) % 360
   if (newRotation < 0) newRotation += 360
-  
+
   const updatedElement = {
     ...props.element,
     style: {
@@ -272,7 +273,7 @@ function onRotate(event: MouseEvent) {
       rotation: newRotation
     }
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -287,7 +288,7 @@ function stopRotate() {
 .element {
   position: absolute;
   cursor: move;
-  
+
   &.selected {
     outline: 2px solid var(--primary);
   }
@@ -330,7 +331,7 @@ function stopRotate() {
   border-radius: 50%;
   cursor: grab;
   z-index: 1;
-  
+
   &:active {
     cursor: grabbing;
   }

@@ -32,14 +32,34 @@
         </div>
       </div>
 
-      <PropertiesPanel
-        v-if="selectedElement"
-        :selectedElement="selectedElement"
-        @update:element="updateElement"
-        @delete-element="deleteElement"
-        @duplicate-element="duplicateElement"
-        @close="selectedElement = null"
-      />
+      <div class="right-panel" v-if="selectedElement || showLayerPanel">
+        <v-tabs v-model="activeTab">
+          <v-tab value="properties">Properties</v-tab>
+          <v-tab value="layers">Layers</v-tab>
+        </v-tabs>
+
+        <div class="tab-content">
+          <PropertiesPanel
+            v-if="selectedElement && activeTab === 'properties'"
+            :selectedElement="selectedElement"
+            @update:element="updateElement"
+            @delete-element="deleteElement"
+            @duplicate-element="duplicateElement"
+            @close="selectedElement = null"
+          />
+
+          <LayerControlPanel
+            v-if="activeTab === 'layers'"
+            :elements="currentSectionElements"
+            :selectedElement="selectedElement"
+            @element-selected="selectElement"
+            @move-up="moveElementUp"
+            @move-down="moveElementDown"
+            @move-to-top="moveElementToTop"
+            @move-to-bottom="moveElementToBottom"
+          />
+        </div>
+      </div>
     </div>
 
     <PreviewDialog
@@ -56,6 +76,7 @@ import EditorToolbar from '../components/editor/EditorToolbar.vue'
 import SidebarNavigation from '../components/editor/SidebarNavigation.vue'
 import DocumentPage from '../components/editor/DocumentPage.vue'
 import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
+import LayerControlPanel from '../components/editor/LayerControlPanel.vue'
 import Ruler from '../components/editor/Ruler.vue'
 import PreviewDialog from '../components/editor/PreviewDialog.vue'
 import { useDocumentStore } from '../stores/documentStore'
@@ -81,11 +102,21 @@ const documentPageRefs = ref<any[]>([])
 const showRuler = ref(false)
 const zoom = ref(1)
 const showPreview = ref(false)
+const showLayerPanel = ref(true) // Always show layer panel
+const activeTab = ref('properties') // Default to properties tab
 
 const editorContentStyle = computed(() => ({
   transform: `scale(${zoom.value})`,
   transformOrigin: '0 0'
 }))
+
+// Get elements from the current section for the layer panel
+const currentSectionElements = computed(() => {
+  if (!document.sections || !document.sections[currentSection.value]) {
+    return []
+  }
+  return document.sections[currentSection.value].elements
+})
 
 watch(() => JSON.stringify(document), () => {
   historyStore.pushState(document)
@@ -181,13 +212,16 @@ function deleteElement(element: DocumentElement) {
 }
 
 function duplicateElement(element: DocumentElement) {
+  const highestZIndex = getHighestZIndex()
+
   const newElement = {
     ...element,
     id: `${element.type}-${Date.now()}`,
     position: {
       x: element.position.x + 20,
       y: element.position.y + 20
-    }
+    },
+    zIndex: highestZIndex + 1 // Place the duplicate on top
   }
 
   document.sections[currentSection.value].elements.push(newElement)
@@ -265,6 +299,9 @@ function handleToolClick(tool: string, value?: any) {
 }
 
 function addTextElement() {
+  // Get highest zIndex in current section to place new element on top
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'text-' + Date.now(),
     type: 'text',
@@ -277,13 +314,38 @@ function addTextElement() {
       fontWeight: 'normal',
       color: '#000000',
       backgroundColor: 'transparent'
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
 }
 
+// Helper function to get the highest zIndex in the current section
+function getHighestZIndex(): number {
+  if (!document.sections || !document.sections[currentSection.value]) {
+    return 0
+  }
+
+  const elements = document.sections[currentSection.value].elements
+  if (!elements || elements.length === 0) {
+    return 0
+  }
+
+  let highestZIndex = 0
+  elements.forEach(element => {
+    const zIndex = element.zIndex ?? 0
+    if (zIndex > highestZIndex) {
+      highestZIndex = zIndex
+    }
+  })
+
+  return highestZIndex
+}
+
 function addImageElement() {
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'image-' + Date.now(),
     type: 'image',
@@ -295,13 +357,16 @@ function addImageElement() {
       borderWidth: 0,
       borderColor: 'transparent',
       opacity: 1
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
 }
 
 function addShapeElement() {
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'shape-' + Date.now(),
     type: 'shape',
@@ -313,13 +378,16 @@ function addShapeElement() {
       stroke: '#CBD5E1',
       strokeWidth: 1,
       opacity: 1
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
 }
 
 function addLineElement() {
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'line-' + Date.now(),
     type: 'shape',
@@ -330,13 +398,16 @@ function addLineElement() {
       stroke: '#000000',
       strokeWidth: 2,
       opacity: 1
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
 }
 
 function addTableElement() {
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'table-' + Date.now(),
     type: 'table',
@@ -352,13 +423,16 @@ function addTableElement() {
       cellBackgroundColor: '#FFFFFF',
       cellTextColor: '#000000',
       borderColor: '#E2E8F0'
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
 }
 
 function addSignatureElement() {
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'signature-' + Date.now(),
     type: 'signature',
@@ -368,13 +442,16 @@ function addSignatureElement() {
     style: {
       borderBottom: '1px solid #000000',
       label: 'Signature'
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
 }
 
 function addFormElement() {
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'form-' + Date.now(),
     type: 'form',
@@ -387,13 +464,16 @@ function addFormElement() {
     size: { width: 300, height: 80 },
     style: {
       backgroundColor: 'white'
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
 }
 
 function addGridElement() {
+  const highestZIndex = getHighestZIndex()
+
   const newElement: DocumentElement = {
     id: 'grid-' + Date.now(),
     type: 'grid',
@@ -408,10 +488,134 @@ function addGridElement() {
     style: {
       backgroundColor: 'white',
       borderColor: '#E2E8F0'
-    }
+    },
+    zIndex: highestZIndex + 1 // Place on top
   }
   document.sections[currentSection.value].elements.push(newElement)
   selectElement(newElement)
+}
+
+// Layer management functions
+function moveElementUp(element: DocumentElement) {
+  const sectionIndex = document.sections.findIndex(s =>
+    s.elements.some(e => e.id === element.id)
+  )
+
+  if (sectionIndex >= 0) {
+    const elements = document.sections[sectionIndex].elements
+    const elementIndex = elements.findIndex(e => e.id === element.id)
+
+    if (elementIndex >= 0) {
+      // Get current zIndex or default to 0
+      const currentZIndex = element.zIndex ?? 0
+
+      // Find the element with the next higher zIndex
+      const higherElements = elements.filter(e => (e.zIndex ?? 0) > currentZIndex)
+
+      if (higherElements.length > 0) {
+        // Sort by zIndex to find the element immediately above
+        higherElements.sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+        const nextElement = higherElements[0]
+        const nextZIndex = nextElement.zIndex ?? 0
+
+        // Swap zIndex values
+        const updatedElement = { ...element, zIndex: nextZIndex }
+        const updatedNextElement = { ...nextElement, zIndex: currentZIndex }
+
+        // Update both elements
+        updateElement(updatedElement)
+        updateElement(updatedNextElement)
+      } else {
+        // If this is already the top element, increment its zIndex
+        const updatedElement = { ...element, zIndex: currentZIndex + 1 }
+        updateElement(updatedElement)
+      }
+    }
+  }
+}
+
+function moveElementDown(element: DocumentElement) {
+  const sectionIndex = document.sections.findIndex(s =>
+    s.elements.some(e => e.id === element.id)
+  )
+
+  if (sectionIndex >= 0) {
+    const elements = document.sections[sectionIndex].elements
+    const elementIndex = elements.findIndex(e => e.id === element.id)
+
+    if (elementIndex >= 0) {
+      // Get current zIndex or default to 0
+      const currentZIndex = element.zIndex ?? 0
+
+      // Find the element with the next lower zIndex
+      const lowerElements = elements.filter(e => (e.zIndex ?? 0) < currentZIndex)
+
+      if (lowerElements.length > 0) {
+        // Sort by zIndex to find the element immediately below
+        lowerElements.sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))
+        const prevElement = lowerElements[0]
+        const prevZIndex = prevElement.zIndex ?? 0
+
+        // Swap zIndex values
+        const updatedElement = { ...element, zIndex: prevZIndex }
+        const updatedPrevElement = { ...prevElement, zIndex: currentZIndex }
+
+        // Update both elements
+        updateElement(updatedElement)
+        updateElement(updatedPrevElement)
+      } else {
+        // If this is already the bottom element, decrement its zIndex
+        const updatedElement = { ...element, zIndex: currentZIndex - 1 }
+        updateElement(updatedElement)
+      }
+    }
+  }
+}
+
+function moveElementToTop(element: DocumentElement) {
+  const sectionIndex = document.sections.findIndex(s =>
+    s.elements.some(e => e.id === element.id)
+  )
+
+  if (sectionIndex >= 0) {
+    const elements = document.sections[sectionIndex].elements
+
+    // Find the highest zIndex
+    let highestZIndex = 0
+    elements.forEach(e => {
+      const zIndex = e.zIndex ?? 0
+      if (zIndex > highestZIndex) {
+        highestZIndex = zIndex
+      }
+    })
+
+    // Set this element's zIndex to be higher than the highest
+    const updatedElement = { ...element, zIndex: highestZIndex + 1 }
+    updateElement(updatedElement)
+  }
+}
+
+function moveElementToBottom(element: DocumentElement) {
+  const sectionIndex = document.sections.findIndex(s =>
+    s.elements.some(e => e.id === element.id)
+  )
+
+  if (sectionIndex >= 0) {
+    const elements = document.sections[sectionIndex].elements
+
+    // Find the lowest zIndex
+    let lowestZIndex = 0
+    elements.forEach(e => {
+      const zIndex = e.zIndex ?? 0
+      if (zIndex < lowestZIndex) {
+        lowestZIndex = zIndex
+      }
+    })
+
+    // Set this element's zIndex to be lower than the lowest
+    const updatedElement = { ...element, zIndex: lowestZIndex - 1 }
+    updateElement(updatedElement)
+  }
 }
 
 async function saveDocument() {
@@ -457,5 +661,18 @@ async function saveDocument() {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.right-panel {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background-color: var(--surface);
+
+  .tab-content {
+    flex: 1;
+    overflow: auto;
+  }
 }
 </style>

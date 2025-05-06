@@ -29,6 +29,7 @@ export type DocumentElement = {
   position: Position
   size: Size
   style?: any
+  zIndex?: number
 }
 
 export interface TextElement extends DocumentElement {
