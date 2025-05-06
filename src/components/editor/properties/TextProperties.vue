@@ -252,7 +252,8 @@ import {
   applyTextColor,
   applyBackgroundColor,
   applyTextAlignment,
-  applyTextAndBackgroundColor
+  applyTextAndBackgroundColor,
+  directlyApplyStyle
 } from '../../../utils/selectionManager'
 
 const props = defineProps<{
@@ -346,9 +347,16 @@ function updateFontSize() {
     console.log('Has saved selection for font size:', hasSelection)
 
     if (hasSelection) {
-      // Apply font size to selected text only
-      const success = applyFontSize(Number(fontSize.value))
-      console.log('Applied font size to selection:', success)
+      // Make sure the font size has 'px' units
+      const fontSizeWithUnits = fontSize.value.toString().includes('px')
+        ? fontSize.value.toString()
+        : `${fontSize.value}px`;
+
+      console.log('Applying font size with units:', fontSizeWithUnits);
+
+      // Apply font size to selected text only using our direct method
+      const success = directlyApplyStyle('fontSize', fontSizeWithUnits)
+      console.log('Applied font size to selection using directlyApplyStyle:', success)
 
       // The content will be updated by the TextElement component's mutation observer
       // No need to manually update the element here
@@ -410,9 +418,9 @@ function updateTextColor() {
     console.log('Has saved selection for text color:', hasSelection)
 
     if (hasSelection) {
-      // Apply text color to selected text only
-      const success = applyTextColor(textColor.value)
-      console.log('Applied text color to selection:', success)
+      // Apply text color to selected text only using our direct method
+      const success = directlyApplyStyle('color', textColor.value)
+      console.log('Applied text color to selection using directlyApplyStyle:', success)
 
       // The content will be updated by the TextElement component's mutation observer
       // No need to manually update the element here
@@ -434,9 +442,9 @@ function updateBackgroundColor() {
     console.log('Has saved selection for background color:', hasSelection)
 
     if (hasSelection && !blockBackground.value) {
-      // Apply background color to selected text only
-      const success = applyBackgroundColor(backgroundColor.value)
-      console.log('Applied background color to selection:', success)
+      // Apply background color to selected text only using our direct method
+      const success = directlyApplyStyle('backgroundColor', backgroundColor.value)
+      console.log('Applied background color to selection using directlyApplyStyle:', success)
 
       // The content will be updated by the TextElement component's mutation observer
       // No need to manually update the element here

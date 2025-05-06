@@ -443,9 +443,35 @@ function applyStyleToSelectedText(styleProperty: string, value: string | boolean
       command = 'fontName'
       break
     case 'fontSize':
-      command = 'fontSize'
-      value2 = value + 'px'
-      break
+      // Special handling for font size
+      console.log('Special handling for font size:', value)
+
+      // Create a span with the specified font size
+      const fontSizeSpan = document.createElement('span')
+      fontSizeSpan.style.fontSize = value + 'px'
+
+      // Extract the selected content
+      const fontSizeFragment = range.extractContents()
+      fontSizeSpan.appendChild(fontSizeFragment)
+
+      // Insert the styled span
+      range.insertNode(fontSizeSpan)
+
+      // Update selection to include the new span
+      selection.removeAllRanges()
+      const fontSizeRange = document.createRange()
+      fontSizeRange.selectNodeContents(fontSizeSpan)
+      selection.addRange(fontSizeRange)
+
+      // Update the element content
+      const fontSizeUpdatedElement = {
+        ...props.element,
+        content: contentElement.value.innerHTML
+      }
+
+      emit('update:element', fontSizeUpdatedElement)
+      console.log('Font size applied successfully with span')
+      return true
     case 'foreColor':
       command = 'foreColor'
       break
@@ -614,14 +640,19 @@ function setupMutationObserver() {
     )
 
     if (contentChanged) {
-      handleTextChange({ target: contentElement.value } as unknown as Event)
+      // Add a small delay to ensure the DOM has settled
+      setTimeout(() => {
+        handleTextChange({ target: contentElement.value } as unknown as Event)
+      }, 10)
     }
   })
 
   observer.observe(contentElement.value, {
     childList: true,
     characterData: true,
-    subtree: true
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class']
   })
 }
 
@@ -653,6 +684,7 @@ onMounted(() => {
     // Ensure the element has proper attributes for editing
     contentElement.value.setAttribute('contenteditable', 'true')
     contentElement.value.setAttribute('spellcheck', 'false') // Disable spell checking to avoid browser interference
+    contentElement.value.setAttribute('data-text-element', 'true') // Add a data attribute for easier selection
 
     // Apply styles directly to ensure they take effect immediately
     Object.assign(contentElement.value.style, textStyle.value)
@@ -666,6 +698,31 @@ onMounted(() => {
         contentElement.value.focus()
       }
     })
+
+    // Add a mouseup handler to ensure selection is saved
+    contentElement.value.addEventListener('mouseup', () => {
+      // Add a small delay to ensure the selection is complete
+      setTimeout(() => {
+        // Save the selection for text formatting
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+          console.log('Selection saved in TextElement mouseup handler');
+        }
+      }, 10);
+    });
+
+    // Add a keyup handler to ensure selection is saved after keyboard navigation
+    contentElement.value.addEventListener('keyup', (e) => {
+      // Only for navigation keys and shift (for selection)
+      if (e.key.includes('Arrow') || e.key === 'Home' || e.key === 'End' ||
+          e.key === 'PageUp' || e.key === 'PageDown' || e.key === 'Shift') {
+        // Save the selection for text formatting
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+          console.log('Selection saved in TextElement keyup handler');
+        }
+      }
+    });
   }
 })
 
@@ -725,6 +782,26 @@ onBeforeUnmount(() => {
       user-select: text;
       position: relative;
       cursor: text;
+    }
+
+    /* Improve text selection visibility */
+    &::selection {
+      background-color: rgba(0, 123, 255, 0.3) !important;
+      color: inherit !important;
+    }
+
+    /* Ensure spans created by text formatting are properly styled */
+    span {
+      display: inline;
+      vertical-align: baseline;
+      line-height: normal; /* Prevent line height issues with font size changes */
+    }
+
+    /* Ensure font size spans are displayed correctly */
+    span[style*="font-size"] {
+      display: inline;
+      vertical-align: baseline;
+      line-height: normal;
     }
   }
 }
