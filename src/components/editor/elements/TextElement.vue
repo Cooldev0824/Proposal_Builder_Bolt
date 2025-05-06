@@ -24,8 +24,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { DocumentElement } from '../../../types/document'
+import { saveSelection } from '../../../utils/selectionManager'
 
 const props = defineProps<{
   element: DocumentElement
@@ -65,7 +66,9 @@ const elementStyle = computed(() => {
     top: `${props.element.position.y}px`,
     width: `${props.element.size.width}px`,
     minHeight: `${props.element.size.height}px`,
-    backgroundColor: props.element.style?.backgroundColor || 'transparent',
+    backgroundColor: props.element.style?.blockBackground ?
+      props.element.style?.blockBackgroundColor || '#f5f5f5' :
+      'transparent',
     padding: '8px',
     borderRadius: '4px',
     border: props.isSelected ? '2px solid var(--primary)' : '2px solid transparent',
@@ -83,6 +86,7 @@ const textStyle = computed(() => {
     textDecoration: style.underline ? 'underline' : 'none',
     textAlign: style.align || 'left',
     color: style.color || '#000000',
+    backgroundColor: style.blockBackground ? 'transparent' : (style.backgroundColor || 'transparent'),
     lineHeight: '1.5',
     margin: 0,
     padding: 0,
@@ -95,11 +99,23 @@ const textStyle = computed(() => {
 })
 
 // Watch for style changes
-watch(() => props.element.style, () => {
+watch(() => props.element.style, (newStyle) => {
+  console.log('TextElement: style changed', newStyle)
+
+  // Update the text style
   if (contentElement.value) {
     Object.assign(contentElement.value.style, textStyle.value)
   }
-}, { deep: true })
+
+  // Force update of the element style for block background
+  if (newStyle?.blockBackground) {
+    console.log('Updating block background color:', newStyle.blockBackgroundColor)
+    const elementDiv = contentElement.value?.parentElement
+    if (elementDiv) {
+      elementDiv.style.backgroundColor = newStyle.blockBackgroundColor || '#f5f5f5'
+    }
+  }
+}, { deep: true, immediate: true })
 
 // Watch for content changes from outside this component
 watch(() => props.element.content, (newContent) => {
@@ -314,8 +330,11 @@ function handleBlur() {
 
 // Handle mouse up event - selection is now handled by the global selection manager
 function handleMouseUp() {
-  // Emit an event to notify that text might be selected
-  emitSelectionState();
+  // Small delay to ensure the selection is properly set
+  setTimeout(() => {
+    // Emit an event to notify that text might be selected
+    emitSelectionState();
+  }, 0);
 }
 
 // Handle key up event - selection is now handled by the global selection manager
@@ -324,8 +343,14 @@ function handleKeyUp(event: KeyboardEvent) {
   if (event.key === 'Shift' ||
       event.key.includes('Arrow') ||
       event.key === 'Home' ||
-      event.key === 'End') {
-    emitSelectionState();
+      event.key === 'End' ||
+      event.ctrlKey ||
+      event.metaKey) {
+
+    // Small delay to ensure the selection is properly set
+    setTimeout(() => {
+      emitSelectionState();
+    }, 0);
   }
 }
 
@@ -338,10 +363,22 @@ function emitSelectionState() {
 
   const range = selection.getRangeAt(0);
 
+  // Skip if no text is selected
+  if (range.collapsed) return;
+
   // Check if the selection is within our content element
   if (contentElement.value.contains(range.commonAncestorContainer)) {
-    console.log('Text selection detected in TextElement');
-    // The global selection manager will handle saving the selection
+    console.log('Text selection detected in TextElement', {
+      elementId: props.element.id,
+      text: range.toString()
+    });
+
+    // Force focus on the content element to ensure the selection is active
+    contentElement.value.focus();
+
+    // Explicitly call saveSelection from the selection manager
+    const saved = saveSelection();
+    console.log('Selection saved:', saved);
   }
 }
 
@@ -569,6 +606,21 @@ function setupMutationObserver() {
     subtree: true
   })
 }
+
+// Initialize the component
+onMounted(() => {
+  // Apply initial styles
+  nextTick(() => {
+    // Force update of the element style for block background
+    if (props.element.style?.blockBackground) {
+      console.log('Initial block background color:', props.element.style.blockBackgroundColor)
+      const elementDiv = contentElement.value?.parentElement
+      if (elementDiv) {
+        elementDiv.style.backgroundColor = props.element.style.blockBackgroundColor || '#f5f5f5'
+      }
+    }
+  })
+})
 
 // Expose methods to parent components
 defineExpose({

@@ -11,10 +11,16 @@ let savedElement: HTMLElement | null = null;
  */
 export function saveSelection(): boolean {
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return false;
+  if (!selection || selection.rangeCount === 0) {
+    console.log('No selection found');
+    return false;
+  }
 
   const range = selection.getRangeAt(0);
-  if (range.collapsed) return false;
+  if (range.collapsed) {
+    console.log('Selection is collapsed (no text selected)');
+    return false;
+  }
 
   // Find the contenteditable element containing the selection
   let element = range.commonAncestorContainer as HTMLElement;
@@ -27,7 +33,10 @@ export function saveSelection(): boolean {
     element = element.parentElement as HTMLElement;
   }
 
-  if (!element) return false;
+  if (!element) {
+    console.log('No contenteditable element found');
+    return false;
+  }
 
   // Make sure the selection is within a text element
   const textElement = element.closest('.text-element');
@@ -42,7 +51,8 @@ export function saveSelection(): boolean {
 
   console.log('Selection saved', {
     text: range.toString(),
-    element: element.tagName
+    element: element.tagName,
+    textElement: textElement.getAttribute('data-element-id') || 'unknown'
   });
 
   return true;
@@ -240,14 +250,190 @@ export function applyFontSize(fontSize: number): boolean {
  * Apply text color to the saved selection
  */
 export function applyTextColor(color: string): boolean {
-  return applyFormatting('foreColor', color);
+  if (!savedRange || !savedElement) {
+    console.error('Cannot apply text color: No saved selection');
+    return false;
+  }
+
+  try {
+    // Focus the element first to ensure we're working with the right context
+    savedElement.focus();
+
+    // Get the current selection
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    // Clear any existing selection
+    selection.removeAllRanges();
+
+    // Add our saved range
+    const range = savedRange.cloneRange();
+    selection.addRange(range);
+
+    // Make sure we have a valid selection
+    if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
+      console.error('Invalid selection range');
+      return false;
+    }
+
+    // Get the current range
+    const currentRange = selection.getRangeAt(0);
+
+    // Create a span with the specified text color
+    const span = document.createElement('span');
+    span.style.color = color;
+
+    // Extract the selected content and wrap it in the span
+    const fragment = currentRange.extractContents();
+    span.appendChild(fragment);
+
+    // Insert the styled span
+    currentRange.insertNode(span);
+
+    // Create a new range that selects just the content we modified
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+
+    // Update the selection
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    // Update our saved range
+    savedRange = newRange.cloneRange();
+
+    console.log(`Applied text color: ${color} to selection`);
+    return true;
+  } catch (error) {
+    console.error(`Error applying text color:`, error);
+    return false;
+  }
 }
 
 /**
  * Apply background color to the saved selection
  */
 export function applyBackgroundColor(color: string): boolean {
-  return applyFormatting('backColor', color);
+  if (!savedRange || !savedElement) {
+    console.error('Cannot apply background color: No saved selection');
+    return false;
+  }
+
+  try {
+    // Focus the element first to ensure we're working with the right context
+    savedElement.focus();
+
+    // Get the current selection
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    // Clear any existing selection
+    selection.removeAllRanges();
+
+    // Add our saved range
+    const range = savedRange.cloneRange();
+    selection.addRange(range);
+
+    // Make sure we have a valid selection
+    if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
+      console.error('Invalid selection range');
+      return false;
+    }
+
+    // Get the current range
+    const currentRange = selection.getRangeAt(0);
+
+    // Create a span with the specified background color
+    const span = document.createElement('span');
+    span.style.backgroundColor = color;
+
+    // Extract the selected content and wrap it in the span
+    const fragment = currentRange.extractContents();
+    span.appendChild(fragment);
+
+    // Insert the styled span
+    currentRange.insertNode(span);
+
+    // Create a new range that selects just the content we modified
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+
+    // Update the selection
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    // Update our saved range
+    savedRange = newRange.cloneRange();
+
+    console.log(`Applied background color: ${color} to selection`);
+    return true;
+  } catch (error) {
+    console.error(`Error applying background color:`, error);
+    return false;
+  }
+}
+
+/**
+ * Apply both text color and background color to the saved selection at once
+ */
+export function applyTextAndBackgroundColor(textColor: string, backgroundColor: string): boolean {
+  if (!savedRange || !savedElement) {
+    console.error('Cannot apply colors: No saved selection');
+    return false;
+  }
+
+  try {
+    // Focus the element first to ensure we're working with the right context
+    savedElement.focus();
+
+    // Get the current selection
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    // Clear any existing selection
+    selection.removeAllRanges();
+
+    // Add our saved range
+    const range = savedRange.cloneRange();
+    selection.addRange(range);
+
+    // Make sure we have a valid selection
+    if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
+      console.error('Invalid selection range');
+      return false;
+    }
+
+    // Get the current range
+    const currentRange = selection.getRangeAt(0);
+
+    // Create a span with both text and background color
+    const span = document.createElement('span');
+    span.style.color = textColor;
+    span.style.backgroundColor = backgroundColor;
+
+    // Extract the selected content and wrap it in the span
+    const fragment = currentRange.extractContents();
+    span.appendChild(fragment);
+
+    // Insert the styled span
+    currentRange.insertNode(span);
+
+    // Create a new range that selects just the content we modified
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+
+    // Update the selection
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    // Update our saved range
+    savedRange = newRange.cloneRange();
+
+    console.log(`Applied text color: ${textColor} and background color: ${backgroundColor} to selection`);
+    return true;
+  } catch (error) {
+    console.error(`Error applying colors:`, error);
+    return false;
+  }
 }
 
 /**
