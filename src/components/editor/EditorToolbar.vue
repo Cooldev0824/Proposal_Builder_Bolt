@@ -1,14 +1,14 @@
 <template>
   <div class="editor-toolbar">
     <div class="toolbar-group">
-      <v-btn icon @click="$emit('tool-clicked', 'undo')" size="small" :disabled="!canUndo">
-        <v-icon>mdi-undo</v-icon>
-        <v-tooltip activator="parent" location="bottom">Undo</v-tooltip>
+      <v-btn @click="$emit('navigate-to-dashboard')" class="mr-2">
+        <v-icon left>mdi-arrow-left</v-icon>
+        Dashboard
       </v-btn>
-      <v-btn icon @click="$emit('tool-clicked', 'redo')" size="small" :disabled="!canRedo">
-        <v-icon>mdi-redo</v-icon>
-        <v-tooltip activator="parent" location="bottom">Redo</v-tooltip>
-      </v-btn>
+
+      <div class="document-title">
+        {{ documentTitle || "Untitled Document" }}
+      </div>
     </div>
 
     <div class="toolbar-divider"></div>
@@ -23,31 +23,68 @@
     <div class="toolbar-divider"></div>
 
     <div class="toolbar-group">
-      <v-btn icon @click="$emit('tool-clicked', 'text')" size="small" :color="isActive('text') ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="$emit('tool-clicked', 'text')"
+        size="small"
+        :color="isActive('text') ? 'primary' : ''"
+      >
         <v-icon>mdi-format-text</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Text</v-tooltip>
       </v-btn>
-      <v-btn icon @click="$emit('tool-clicked', 'image')" size="small" :color="isActive('image') ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="$emit('tool-clicked', 'image')"
+        size="small"
+        :color="isActive('image') ? 'primary' : ''"
+      >
         <v-icon>mdi-image</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Image</v-tooltip>
       </v-btn>
-      <v-btn icon @click="$emit('tool-clicked', 'shape')" size="small" :color="isActive('shape') ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="$emit('tool-clicked', 'shape')"
+        size="small"
+        :color="isActive('shape') ? 'primary' : ''"
+      >
         <v-icon>mdi-shape</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Shape</v-tooltip>
       </v-btn>
-      <v-btn icon @click="$emit('tool-clicked', 'line')" size="small" :color="isActive('line') ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="$emit('tool-clicked', 'line')"
+        size="small"
+        :color="isActive('line') ? 'primary' : ''"
+      >
         <v-icon>mdi-minus</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Line</v-tooltip>
       </v-btn>
-      <v-btn icon @click="$emit('tool-clicked', 'table')" size="small" :color="isActive('table') ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="$emit('tool-clicked', 'table')"
+        size="small"
+        :color="isActive('table') ? 'primary' : ''"
+      >
         <v-icon>mdi-table</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Table</v-tooltip>
       </v-btn>
-      <v-btn icon @click="$emit('tool-clicked', 'signature')" size="small" :color="isActive('signature') ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="$emit('tool-clicked', 'signature')"
+        size="small"
+        :color="isActive('signature') ? 'primary' : ''"
+      >
         <v-icon>mdi-draw</v-icon>
-        <v-tooltip activator="parent" location="bottom">Add Signature</v-tooltip>
+        <v-tooltip activator="parent" location="bottom"
+          >Add Signature</v-tooltip
+        >
       </v-btn>
-      <v-btn icon @click="$emit('tool-clicked', 'form')" size="small" :color="isActive('form') ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="$emit('tool-clicked', 'form')"
+        size="small"
+        :color="isActive('form') ? 'primary' : ''"
+      >
         <v-icon>mdi-form-select</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Form</v-tooltip>
       </v-btn>
@@ -58,11 +95,21 @@
     <v-spacer></v-spacer>
 
     <div class="toolbar-group">
-      <v-btn icon @click="toggleRuler" size="small" :color="showRuler ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="toggleRuler"
+        size="small"
+        :color="showRuler ? 'primary' : ''"
+      >
         <v-icon>mdi-ruler</v-icon>
         <v-tooltip activator="parent" location="bottom">Toggle Ruler</v-tooltip>
       </v-btn>
-      <v-btn icon @click="toggleGrid" size="small" :color="showGrid ? 'primary' : ''">
+      <v-btn
+        icon
+        @click="toggleGrid"
+        size="small"
+        :color="showGrid ? 'primary' : ''"
+      >
         <v-icon>mdi-grid</v-icon>
         <v-tooltip activator="parent" location="bottom">Toggle Grid</v-tooltip>
       </v-btn>
@@ -79,10 +126,34 @@
     <div class="toolbar-divider"></div>
 
     <div class="toolbar-group">
-      <v-btn color="primary" @click="$emit('save')">
+      <v-btn
+        color="primary"
+        @click="$emit('save')"
+        :loading="isSaving"
+        :disabled="isSaving"
+      >
         <v-icon left>mdi-content-save</v-icon>
         Save
       </v-btn>
+
+      <!-- Save status indicator -->
+      <div class="save-status" v-if="saveMessage">
+        <v-icon v-if="saveSuccess" color="success" size="small">
+          mdi-check-circle
+        </v-icon>
+        <v-icon v-if="saveError" color="error" size="small">
+          mdi-alert-circle
+        </v-icon>
+        <span
+          :class="{
+            'text-success': saveSuccess,
+            'text-error': saveError,
+          }"
+        >
+          {{ saveMessage }}
+        </span>
+      </div>
+
       <v-btn @click="$emit('tool-clicked', 'preview')">
         <v-icon left>mdi-eye</v-icon>
         Preview
@@ -92,80 +163,90 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useHistoryStore } from '../../stores/historyStore'
+import { ref, computed, watch } from "vue";
+import { useHistoryStore } from "../../stores/historyStore";
 
-const historyStore = useHistoryStore()
+const historyStore = useHistoryStore();
 
 const props = defineProps<{
-  activeTools: string[]
-  showGrid?: boolean
-}>()
+  activeTools: string[];
+  showGrid?: boolean;
+  isSaving?: boolean;
+  saveSuccess?: boolean;
+  saveError?: boolean;
+  saveMessage?: string;
+  documentTitle?: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'tool-clicked', tool: string, value?: any): void
-  (e: 'save'): void
-}>()
+  (e: "tool-clicked", tool: string, value?: any): void;
+  (e: "save"): void;
+  (e: "navigate-to-dashboard"): void;
+}>();
 
-const canUndo = computed(() => historyStore.canUndo())
-const canRedo = computed(() => historyStore.canRedo())
+const canUndo = computed(() => historyStore.canUndo());
+const canRedo = computed(() => historyStore.canRedo());
 
 // Text formatting state
-const textFormat = ref('Paragraph')
-const fontFamily = ref('Roboto')
-const isBold = ref(false)
-const isItalic = ref(false)
-const isUnderline = ref(false)
-const textAlign = ref('left')
+const textFormat = ref("Paragraph");
+const fontFamily = ref("Roboto");
+const isBold = ref(false);
+const isItalic = ref(false);
+const isUnderline = ref(false);
+const textAlign = ref("left");
 
 // UI state
-const showRuler = ref(false)
-const showGrid = ref(true) // Default to true
+const showRuler = ref(false);
+const showGrid = ref(true); // Default to true
 
 // Watch for changes to the showGrid prop
-watch(() => props.showGrid, (newValue) => {
-  if (newValue !== undefined) {
-    showGrid.value = newValue
-    console.log('Grid visibility updated in toolbar:', showGrid.value)
-  }
-}, { immediate: true })
+watch(
+  () => props.showGrid,
+  (newValue) => {
+    if (newValue !== undefined) {
+      showGrid.value = newValue;
+      console.log("Grid visibility updated in toolbar:", showGrid.value);
+    }
+  },
+  { immediate: true }
+);
 
 function isActive(tool: string) {
-  return props.activeTools.includes(tool)
+  return props.activeTools.includes(tool);
 }
 
 function toggleBold() {
-  isBold.value = !isBold.value
-  emit('tool-clicked', 'format-bold', isBold.value)
+  isBold.value = !isBold.value;
+  emit("tool-clicked", "format-bold", isBold.value);
 }
 
 function toggleItalic() {
-  isItalic.value = !isItalic.value
-  emit('tool-clicked', 'format-italic', isItalic.value)
+  isItalic.value = !isItalic.value;
+  emit("tool-clicked", "format-italic", isItalic.value);
 }
 
 function toggleUnderline() {
-  isUnderline.value = !isUnderline.value
-  emit('tool-clicked', 'format-underline', isUnderline.value)
+  isUnderline.value = !isUnderline.value;
+  emit("tool-clicked", "format-underline", isUnderline.value);
 }
 
 function setTextAlign(align: string) {
-  textAlign.value = align
-  emit('tool-clicked', 'text-align', align)
+  textAlign.value = align;
+  emit("tool-clicked", "text-align", align);
 }
 
 function toggleRuler() {
-  showRuler.value = !showRuler.value
-  emit('tool-clicked', 'ruler', showRuler.value)
+  showRuler.value = !showRuler.value;
+  emit("tool-clicked", "ruler", showRuler.value);
 }
 
 function toggleGrid() {
   // Toggle the grid visibility locally
-  showGrid.value = !showGrid.value
-  console.log('Grid toggled in toolbar:', showGrid.value)
+  showGrid.value = !showGrid.value;
+  console.log("Grid toggled in toolbar:", showGrid.value);
 
   // Emit the event to notify parent components
-  emit('tool-clicked', 'grid', showGrid.value)
+  emit("tool-clicked", "grid", showGrid.value);
 }
 </script>
 
@@ -219,5 +300,32 @@ function toggleGrid() {
   .toolbar-divider {
     display: none;
   }
+}
+
+.save-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-size: 14px;
+
+  .text-success {
+    color: var(--success);
+  }
+
+  .text-error {
+    color: var(--error);
+  }
+}
+
+.document-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-left: 16px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
 }
 </style>
