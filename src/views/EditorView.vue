@@ -3,8 +3,14 @@
     <EditorToolbar
       :activeTools="activeTools"
       :showGrid="showGrid"
+      :isSaving="isSaving"
+      :saveSuccess="saveSuccess"
+      :saveError="saveError"
+      :saveMessage="saveMessage"
+      :documentTitle="document.title"
       @tool-clicked="handleToolClick"
       @save="saveDocument"
+      @navigate-to-dashboard="navigateToDashboard"
     />
 
     <div class="editor-container">
@@ -22,7 +28,10 @@
 
         <div class="editor-content" :style="editorContentStyle">
           <DocumentPage
-            v-for="(section, index) in document?.sections && document?.sections.length > 0 ? document.sections : []"
+            v-for="(section, index) in document?.sections &&
+            document?.sections.length > 0
+              ? document.sections
+              : []"
             :key="section.id"
             :section="section"
             :isActive="currentSection === index"
@@ -69,608 +78,976 @@
       </div>
     </div>
 
-    <PreviewDialog
-      v-model="showPreview"
-      :document="document"
-    />
+    <PreviewDialog v-model="showPreview" :document="document" />
+
+    <!-- Add confirmation dialog -->
+    <v-dialog v-model="showUnsavedChangesDialog" max-width="400">
+      <v-card>
+        <v-card-title>Unsaved Changes</v-card-title>
+        <v-card-text>
+          You have unsaved changes. Do you want to save before leaving?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="handleUnsavedChanges('discard')">Discard</v-btn>
+          <v-btn text @click="handleUnsavedChanges('cancel')">Cancel</v-btn>
+          <v-btn color="primary" @click="handleUnsavedChanges('save')"
+            >Save</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add title dialog -->
+    <v-dialog v-model="showTitleDialog" max-width="400">
+      <v-card>
+        <v-card-title>Document Title</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="documentTitle"
+            label="Enter document title"
+            :error-messages="titleError"
+            @keyup.enter="confirmSaveWithTitle"
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="cancelSave">Cancel</v-btn>
+          <v-btn color="primary" @click="confirmSaveWithTitle">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import EditorToolbar from '../components/editor/EditorToolbar.vue'
-import SidebarNavigation from '../components/editor/SidebarNavigation.vue'
-import DocumentPage from '../components/editor/DocumentPage.vue'
-import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
-import LayerControlPanel from '../components/editor/LayerControlPanel.vue'
-import Ruler from '../components/editor/Ruler.vue'
-import PreviewDialog from '../components/editor/PreviewDialog.vue'
-import { useDocumentStore } from '../stores/documentStore'
-import { useHistoryStore } from '../stores/historyStore'
-import { Section, DocumentElement, Document } from '../types/document'
+import {
+  ref,
+  computed,
+  onMounted,
+  reactive,
+  watch,
+  onBeforeUnmount,
+} from "vue";
+import { useRoute, useRouter } from "vue-router";
+import EditorToolbar from "../components/editor/EditorToolbar.vue";
+import SidebarNavigation from "../components/editor/SidebarNavigation.vue";
+import DocumentPage from "../components/editor/DocumentPage.vue";
+import PropertiesPanel from "../components/editor/PropertiesPanel.vue";
+import LayerControlPanel from "../components/editor/LayerControlPanel.vue";
+import Ruler from "../components/editor/Ruler.vue";
+import PreviewDialog from "../components/editor/PreviewDialog.vue";
+import { useDocumentStore } from "../stores/documentStore";
+import { useHistoryStore } from "../stores/historyStore";
+import { Section, DocumentElement, Document } from "../types/document";
 
-const route = useRoute()
-const documentStore = useDocumentStore()
-const historyStore = useHistoryStore()
-const documentId = route.params.id as string | undefined
+const route = useRoute();
+const documentStore = useDocumentStore();
+const historyStore = useHistoryStore();
+const documentId = route.params.id as string | undefined;
+const router = useRouter();
 
 const document = reactive<Document>({
-  id: documentId || 'new-doc-' + Date.now(),
-  title: 'Untitled Document',
-  sections: []
-})
+  id: documentId || "new-doc-" + Date.now(),
+  title: "Untitled Document",
+  sections: [],
+});
 
-const currentSection = ref(0)
-const selectedElement = ref<DocumentElement | null>(null)
-const activeTools = ref<string[]>([])
-const editorContainer = ref<HTMLElement | null>(null)
-const documentPageRefs = ref<any[]>([])
-const showRuler = ref(false)
-const showGrid = ref(true) // Show grid by default
-const zoom = ref(1)
-const showPreview = ref(false)
-const showLayerPanel = ref(true) // Always show layer panel
-const activeTab = ref('properties') // Default to properties tab
+const currentSection = ref(0);
+const selectedElement = ref<DocumentElement | null>(null);
+const activeTools = ref<string[]>([]);
+const editorContainer = ref<HTMLElement | null>(null);
+const documentPageRefs = ref<any[]>([]);
+const showRuler = ref(false);
+const showGrid = ref(true); // Show grid by default
+const zoom = ref(1);
+const showPreview = ref(false);
+const showLayerPanel = ref(true); // Always show layer panel
+const activeTab = ref("properties"); // Default to properties tab
 
 const editorContentStyle = computed(() => ({
   transform: `scale(${zoom.value})`,
-  transformOrigin: '0 0'
-}))
+  transformOrigin: "0 0",
+}));
 
 // Get elements from the current section for the layer panel
 const currentSectionElements = computed(() => {
   if (!document.sections || !document.sections[currentSection.value]) {
-    return []
+    return [];
   }
-  return document.sections[currentSection.value].elements
-})
+  return document.sections[currentSection.value].elements;
+});
 
-watch(() => JSON.stringify(document), () => {
-  historyStore.pushState(document)
-}, { deep: true })
+watch(
+  () => JSON.stringify(document),
+  () => {
+    historyStore.pushState(document);
+  },
+  { deep: true }
+);
 
 onMounted(async () => {
+  isLoadingDocument.value = true;
+
   if (documentId) {
-    const loadedDoc = await documentStore.getDocument(documentId)
+    const loadedDoc = await documentStore.getDocument(documentId);
     if (loadedDoc) {
-      Object.assign(document, loadedDoc)
-      historyStore.pushState(document)
+      Object.assign(document, loadedDoc);
+      historyStore.pushState(document);
     }
   } else {
     document.sections = [
       {
-        id: 'cover',
-        title: 'Cover',
-        elements: []
-      }
-    ]
-    historyStore.pushState(document)
+        id: "cover",
+        title: "Cover",
+        elements: [],
+      },
+    ];
+    historyStore.pushState(document);
   }
-})
+
+  // Reset loading flag and unsaved changes flag
+  isLoadingDocument.value = false;
+  resetUnsavedChanges();
+});
 
 function handleUndo() {
-  const previousState = historyStore.undo(document)
+  const previousState = historyStore.undo(document);
   if (previousState) {
-    Object.assign(document, previousState)
+    Object.assign(document, previousState);
   }
 }
 
 function handleRedo() {
-  const nextState = historyStore.redo(document)
+  const nextState = historyStore.redo(document);
   if (nextState) {
-    Object.assign(document, nextState)
+    Object.assign(document, nextState);
   }
 }
 
 function selectSection(index: number) {
-  currentSection.value = index
-  selectedElement.value = null
+  currentSection.value = index;
+  selectedElement.value = null;
 }
 
 function addSection(section: Section) {
-  document.sections.push(section)
-  currentSection.value = document.sections.length - 1
+  document.sections.push(section);
+  currentSection.value = document.sections.length - 1;
 }
 
 function updateSection(index: number, section: Section) {
-  document.sections[index] = section
+  document.sections[index] = section;
 }
 
 function deleteSection(index: number) {
   if (document.sections.length > 1) {
-    document.sections.splice(index, 1)
+    document.sections.splice(index, 1);
     if (currentSection.value >= document.sections.length) {
-      currentSection.value = document.sections.length - 1
+      currentSection.value = document.sections.length - 1;
     }
   }
 }
 
 function selectElement(element: DocumentElement) {
-  selectedElement.value = element
-  activeTools.value = [element.type]
+  selectedElement.value = element;
+  activeTools.value = [element.type];
 }
 
 function updateElement(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s =>
-    s.elements.some(e => e.id === element.id)
-  )
+  const sectionIndex = document.sections.findIndex((s) =>
+    s.elements.some((e) => e.id === element.id)
+  );
 
   if (sectionIndex >= 0) {
-    const elementIndex = document.sections[sectionIndex].elements.findIndex(e =>
-      e.id === element.id
-    )
+    const elementIndex = document.sections[sectionIndex].elements.findIndex(
+      (e) => e.id === element.id
+    );
     if (elementIndex >= 0) {
-      document.sections[sectionIndex].elements[elementIndex] = element
+      document.sections[sectionIndex].elements[elementIndex] = element;
     }
   }
 }
 
 function deleteElement(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s =>
-    s.elements.some(e => e.id === element.id)
-  )
+  const sectionIndex = document.sections.findIndex((s) =>
+    s.elements.some((e) => e.id === element.id)
+  );
 
   if (sectionIndex >= 0) {
-    document.sections[sectionIndex].elements = document.sections[sectionIndex].elements.filter(
-      e => e.id !== element.id
-    )
-    selectedElement.value = null
+    document.sections[sectionIndex].elements = document.sections[
+      sectionIndex
+    ].elements.filter((e) => e.id !== element.id);
+    selectedElement.value = null;
   }
 }
 
 function duplicateElement(element: DocumentElement) {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement = {
     ...element,
     id: `${element.type}-${Date.now()}`,
     position: {
       x: element.position.x + 20,
-      y: element.position.y + 20
+      y: element.position.y + 20,
     },
-    zIndex: highestZIndex + 1 // Place the duplicate on top
-  }
+    zIndex: highestZIndex + 1, // Place the duplicate on top
+  };
 
-  document.sections[currentSection.value].elements.push(newElement)
-  selectedElement.value = newElement
+  document.sections[currentSection.value].elements.push(newElement);
+  selectedElement.value = newElement;
 }
 
 // Text selection is now handled by the global selection manager
 
 function handleToolClick(tool: string, value?: any) {
   switch (tool) {
-    case 'undo':
-      handleUndo()
-      break
+    case "undo":
+      handleUndo();
+      break;
 
-    case 'redo':
-      handleRedo()
-      break
+    case "redo":
+      handleRedo();
+      break;
 
-    case 'add-page':
+    case "add-page":
       addSection({
-        id: 'section-' + Date.now(),
-        title: 'New Section',
-        elements: []
-      })
-      break
+        id: "section-" + Date.now(),
+        title: "New Section",
+        elements: [],
+      });
+      break;
 
-    case 'ruler':
-      showRuler.value = value
-      break
+    case "ruler":
+      showRuler.value = value;
+      break;
 
-    case 'grid':
-      toggleGrid(value)
-      break
+    case "grid":
+      toggleGrid(value);
+      break;
 
-    case 'zoom-in':
-      zoom.value = Math.min(2, zoom.value + 0.1)
-      break
+    case "zoom-in":
+      zoom.value = Math.min(2, zoom.value + 0.1);
+      break;
 
-    case 'zoom-out':
-      zoom.value = Math.max(0.5, zoom.value - 0.1)
-      break
+    case "zoom-out":
+      zoom.value = Math.max(0.5, zoom.value - 0.1);
+      break;
 
-    case 'text':
-      addTextElement()
-      break
+    case "text":
+      addTextElement();
+      break;
 
-    case 'image':
-      addImageElement()
-      break
+    case "image":
+      addImageElement();
+      break;
 
-    case 'shape':
-      addShapeElement()
-      break
+    case "shape":
+      addShapeElement();
+      break;
 
-    case 'line':
-      addLineElement()
-      break
+    case "line":
+      addLineElement();
+      break;
 
-    case 'table':
-      addTableElement()
-      break
+    case "table":
+      addTableElement();
+      break;
 
-    case 'signature':
-      addSignatureElement()
-      break
+    case "signature":
+      addSignatureElement();
+      break;
 
-    case 'form':
-      addFormElement()
-      break
+    case "form":
+      addFormElement();
+      break;
 
-    case 'grid-element':
-      addGridElement()
-      break
+    case "grid-element":
+      addGridElement();
+      break;
 
-    case 'preview':
-      showPreview.value = true
-      break
+    case "preview":
+      showPreview.value = true;
+      break;
   }
 }
 
 function addTextElement() {
   // Get highest zIndex in current section to place new element on top
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'text-' + Date.now(),
-    type: 'text',
-    content: 'New text block',
+    id: "text-" + Date.now(),
+    type: "text",
+    content: "New text block",
     position: { x: 100, y: 100 },
     size: { width: 300, height: 100 },
     style: {
-      fontFamily: 'Roboto',
+      fontFamily: "Roboto",
       fontSize: 16,
-      fontWeight: 'normal',
-      color: '#000000',
-      backgroundColor: 'transparent'
+      fontWeight: "normal",
+      color: "#000000",
+      backgroundColor: "transparent",
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 // Helper function to get the highest zIndex in the current section
 function getHighestZIndex(): number {
   if (!document.sections || !document.sections[currentSection.value]) {
-    return 0
+    return 0;
   }
 
-  const elements = document.sections[currentSection.value].elements
+  const elements = document.sections[currentSection.value].elements;
   if (!elements || elements.length === 0) {
-    return 0
+    return 0;
   }
 
-  let highestZIndex = 0
-  elements.forEach(element => {
-    const zIndex = element.zIndex ?? 0
+  let highestZIndex = 0;
+  elements.forEach((element) => {
+    const zIndex = element.zIndex ?? 0;
     if (zIndex > highestZIndex) {
-      highestZIndex = zIndex
+      highestZIndex = zIndex;
     }
-  })
+  });
 
-  return highestZIndex
+  return highestZIndex;
 }
 
 function addImageElement() {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'image-' + Date.now(),
-    type: 'image',
-    content: 'https://images.pexels.com/photos/3760514/pexels-photo-3760514.jpeg',
+    id: "image-" + Date.now(),
+    type: "image",
+    content:
+      "https://images.pexels.com/photos/3760514/pexels-photo-3760514.jpeg",
     position: { x: 100, y: 100 },
     size: { width: 300, height: 200 },
     style: {
       borderRadius: 0,
       borderWidth: 0,
-      borderColor: 'transparent',
-      opacity: 1
+      borderColor: "transparent",
+      opacity: 1,
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 function addShapeElement() {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'shape-' + Date.now(),
-    type: 'shape',
-    content: 'rectangle',
+    id: "shape-" + Date.now(),
+    type: "shape",
+    content: "rectangle",
     position: { x: 100, y: 100 },
     size: { width: 200, height: 100 },
     style: {
-      fill: '#E2E8F0',
-      stroke: '#CBD5E1',
+      fill: "#E2E8F0",
+      stroke: "#CBD5E1",
       strokeWidth: 1,
-      opacity: 1
+      opacity: 1,
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 function addLineElement() {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'line-' + Date.now(),
-    type: 'shape',
-    content: 'line',
+    id: "line-" + Date.now(),
+    type: "shape",
+    content: "line",
     position: { x: 100, y: 100 },
     size: { width: 200, height: 2 },
     style: {
-      stroke: '#000000',
+      stroke: "#000000",
       strokeWidth: 2,
-      opacity: 1
+      opacity: 1,
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 function addTableElement() {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'table-' + Date.now(),
-    type: 'table',
+    id: "table-" + Date.now(),
+    type: "table",
     content: {
-      headers: ['Item', 'Description', 'Price'],
-      rows: [['', '', '']]
+      headers: ["Item", "Description", "Price"],
+      rows: [["", "", ""]],
     },
     position: { x: 50, y: 100 },
     size: { width: 600, height: 200 },
     style: {
-      headerBackgroundColor: '#F8F9FA',
-      headerTextColor: '#000000',
-      cellBackgroundColor: '#FFFFFF',
-      cellTextColor: '#000000',
-      borderColor: '#E2E8F0'
+      headerBackgroundColor: "#F8F9FA",
+      headerTextColor: "#000000",
+      cellBackgroundColor: "#FFFFFF",
+      cellTextColor: "#000000",
+      borderColor: "#E2E8F0",
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 function addSignatureElement() {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'signature-' + Date.now(),
-    type: 'signature',
-    content: '',
+    id: "signature-" + Date.now(),
+    type: "signature",
+    content: "",
     position: { x: 100, y: 400 },
     size: { width: 300, height: 100 },
     style: {
-      borderBottom: '1px solid #000000',
-      label: 'Signature'
+      borderBottom: "1px solid #000000",
+      label: "Signature",
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 function addFormElement() {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'form-' + Date.now(),
-    type: 'form',
+    id: "form-" + Date.now(),
+    type: "form",
     content: {
-      type: 'textfield',
-      label: 'Input Label',
-      inputType: 'text'
+      type: "textfield",
+      label: "Input Label",
+      inputType: "text",
     },
     position: { x: 100, y: 100 },
     size: { width: 300, height: 80 },
     style: {
-      backgroundColor: 'white'
+      backgroundColor: "white",
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 function addGridElement() {
-  const highestZIndex = getHighestZIndex()
+  const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
-    id: 'grid-' + Date.now(),
-    type: 'grid',
+    id: "grid-" + Date.now(),
+    type: "grid",
     content: {
       cells: [
-        { type: 'text', content: 'Text content', size: 1 },
-        { type: 'image', content: '', size: 1 }
-      ]
+        { type: "text", content: "Text content", size: 1 },
+        { type: "image", content: "", size: 1 },
+      ],
     },
     position: { x: 100, y: 100 },
     size: { width: 600, height: 300 },
     style: {
-      backgroundColor: 'white',
-      borderColor: '#E2E8F0'
+      backgroundColor: "white",
+      borderColor: "#E2E8F0",
     },
-    zIndex: highestZIndex + 1 // Place on top
-  }
-  document.sections[currentSection.value].elements.push(newElement)
-  selectElement(newElement)
+    zIndex: highestZIndex + 1, // Place on top
+  };
+  document.sections[currentSection.value].elements.push(newElement);
+  selectElement(newElement);
 }
 
 // Layer management functions
 function moveElementUp(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s =>
-    s.elements.some(e => e.id === element.id)
-  )
+  const sectionIndex = document.sections.findIndex((s) =>
+    s.elements.some((e) => e.id === element.id)
+  );
 
   if (sectionIndex >= 0) {
-    const elements = document.sections[sectionIndex].elements
-    const elementIndex = elements.findIndex(e => e.id === element.id)
+    const elements = document.sections[sectionIndex].elements;
+    const elementIndex = elements.findIndex((e) => e.id === element.id);
 
     if (elementIndex >= 0) {
       // Get current zIndex or default to 0
-      const currentZIndex = element.zIndex ?? 0
+      const currentZIndex = element.zIndex ?? 0;
 
       // Find the element with the next higher zIndex
-      const higherElements = elements.filter(e => (e.zIndex ?? 0) > currentZIndex)
+      const higherElements = elements.filter(
+        (e) => (e.zIndex ?? 0) > currentZIndex
+      );
 
       if (higherElements.length > 0) {
         // Sort by zIndex to find the element immediately above
-        higherElements.sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
-        const nextElement = higherElements[0]
-        const nextZIndex = nextElement.zIndex ?? 0
+        higherElements.sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+        const nextElement = higherElements[0];
+        const nextZIndex = nextElement.zIndex ?? 0;
 
         // Swap zIndex values
-        const updatedElement = { ...element, zIndex: nextZIndex }
-        const updatedNextElement = { ...nextElement, zIndex: currentZIndex }
+        const updatedElement = { ...element, zIndex: nextZIndex };
+        const updatedNextElement = { ...nextElement, zIndex: currentZIndex };
 
         // Update both elements
-        updateElement(updatedElement)
-        updateElement(updatedNextElement)
+        updateElement(updatedElement);
+        updateElement(updatedNextElement);
       } else {
         // If this is already the top element, increment its zIndex
-        const updatedElement = { ...element, zIndex: currentZIndex + 1 }
-        updateElement(updatedElement)
+        const updatedElement = { ...element, zIndex: currentZIndex + 1 };
+        updateElement(updatedElement);
       }
     }
   }
 }
 
 function moveElementDown(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s =>
-    s.elements.some(e => e.id === element.id)
-  )
+  const sectionIndex = document.sections.findIndex((s) =>
+    s.elements.some((e) => e.id === element.id)
+  );
 
   if (sectionIndex >= 0) {
-    const elements = document.sections[sectionIndex].elements
-    const elementIndex = elements.findIndex(e => e.id === element.id)
+    const elements = document.sections[sectionIndex].elements;
+    const elementIndex = elements.findIndex((e) => e.id === element.id);
 
     if (elementIndex >= 0) {
       // Get current zIndex or default to 0
-      const currentZIndex = element.zIndex ?? 0
+      const currentZIndex = element.zIndex ?? 0;
 
       // Find the element with the next lower zIndex
-      const lowerElements = elements.filter(e => (e.zIndex ?? 0) < currentZIndex)
+      const lowerElements = elements.filter(
+        (e) => (e.zIndex ?? 0) < currentZIndex
+      );
 
       if (lowerElements.length > 0) {
         // Sort by zIndex to find the element immediately below
-        lowerElements.sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))
-        const prevElement = lowerElements[0]
-        const prevZIndex = prevElement.zIndex ?? 0
+        lowerElements.sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0));
+        const prevElement = lowerElements[0];
+        const prevZIndex = prevElement.zIndex ?? 0;
 
         // Swap zIndex values
-        const updatedElement = { ...element, zIndex: prevZIndex }
-        const updatedPrevElement = { ...prevElement, zIndex: currentZIndex }
+        const updatedElement = { ...element, zIndex: prevZIndex };
+        const updatedPrevElement = { ...prevElement, zIndex: currentZIndex };
 
         // Update both elements
-        updateElement(updatedElement)
-        updateElement(updatedPrevElement)
+        updateElement(updatedElement);
+        updateElement(updatedPrevElement);
       } else {
         // If this is already the bottom element, decrement its zIndex
-        const updatedElement = { ...element, zIndex: currentZIndex - 1 }
-        updateElement(updatedElement)
+        const updatedElement = { ...element, zIndex: currentZIndex - 1 };
+        updateElement(updatedElement);
       }
     }
   }
 }
 
 function moveElementToTop(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s =>
-    s.elements.some(e => e.id === element.id)
-  )
+  const sectionIndex = document.sections.findIndex((s) =>
+    s.elements.some((e) => e.id === element.id)
+  );
 
   if (sectionIndex >= 0) {
-    const elements = document.sections[sectionIndex].elements
+    const elements = document.sections[sectionIndex].elements;
 
     // Find the highest zIndex
-    let highestZIndex = 0
-    elements.forEach(e => {
-      const zIndex = e.zIndex ?? 0
+    let highestZIndex = 0;
+    elements.forEach((e) => {
+      const zIndex = e.zIndex ?? 0;
       if (zIndex > highestZIndex) {
-        highestZIndex = zIndex
+        highestZIndex = zIndex;
       }
-    })
+    });
 
     // Set this element's zIndex to be higher than the highest
-    const updatedElement = { ...element, zIndex: highestZIndex + 1 }
-    updateElement(updatedElement)
+    const updatedElement = { ...element, zIndex: highestZIndex + 1 };
+    updateElement(updatedElement);
   }
 }
 
 function moveElementToBottom(element: DocumentElement) {
-  const sectionIndex = document.sections.findIndex(s =>
-    s.elements.some(e => e.id === element.id)
-  )
+  const sectionIndex = document.sections.findIndex((s) =>
+    s.elements.some((e) => e.id === element.id)
+  );
 
   if (sectionIndex >= 0) {
-    const elements = document.sections[sectionIndex].elements
+    const elements = document.sections[sectionIndex].elements;
 
     // Find the lowest zIndex
-    let lowestZIndex = 0
-    elements.forEach(e => {
-      const zIndex = e.zIndex ?? 0
+    let lowestZIndex = 0;
+    elements.forEach((e) => {
+      const zIndex = e.zIndex ?? 0;
       if (zIndex < lowestZIndex) {
-        lowestZIndex = zIndex
+        lowestZIndex = zIndex;
       }
-    })
+    });
 
     // Set this element's zIndex to be lower than the lowest
-    const updatedElement = { ...element, zIndex: lowestZIndex - 1 }
-    updateElement(updatedElement)
+    const updatedElement = { ...element, zIndex: lowestZIndex - 1 };
+    updateElement(updatedElement);
   }
 }
 
 // Grid functions
 function toggleGrid(visible?: boolean) {
   // If visible is provided, use it; otherwise toggle the current value
-  showGrid.value = visible !== undefined ? visible : !showGrid.value
+  showGrid.value = visible !== undefined ? visible : !showGrid.value;
 
-  console.log('Grid visibility toggled:', showGrid.value)
+  console.log("Grid visibility toggled:", showGrid.value);
 
   // Update all elements to snap to grid if grid is enabled
   if (showGrid.value) {
-    document.sections.forEach(section => {
-      section.elements.forEach(element => {
+    document.sections.forEach((section) => {
+      section.elements.forEach((element) => {
         // Snap element position to grid
         const snappedPosition = {
           x: Math.round(element.position.x / 10) * 10,
-          y: Math.round(element.position.y / 10) * 10
-        }
+          y: Math.round(element.position.y / 10) * 10,
+        };
 
         // Only update if position actually changed
-        if (snappedPosition.x !== element.position.x ||
-            snappedPosition.y !== element.position.y) {
+        if (
+          snappedPosition.x !== element.position.x ||
+          snappedPosition.y !== element.position.y
+        ) {
           const updatedElement = {
             ...element,
-            position: snappedPosition
-          }
-          updateElement(updatedElement)
+            position: snappedPosition,
+          };
+          updateElement(updatedElement);
         }
-      })
-    })
+      });
+    });
   }
 }
 
-async function saveDocument() {
+// Add these refs for save status
+const isSaving = ref(false);
+const saveSuccess = ref(false);
+const saveError = ref(false);
+const saveMessage = ref("");
+const hasUnsavedChanges = ref(false);
+const showUnsavedChangesDialog = ref(false);
+const pendingNavigation = ref(null);
+
+// Add these refs for the title dialog
+const showTitleDialog = ref(false);
+const documentTitle = ref("");
+const titleError = ref("");
+const pendingSave = ref(false);
+
+// Add a flag to track if we're currently loading a document
+const isLoadingDocument = ref(false);
+const lastEdit = ref(Date.now());
+
+// Track changes to document
+watch(
+  () => JSON.stringify(document),
+  () => {
+    // Only mark as unsaved if we're not loading a document
+    if (!isLoadingDocument.value) {
+      hasUnsavedChanges.value = true;
+      lastEdit.value = Date.now();
+    }
+  },
+  { deep: true }
+);
+
+// Reset unsaved changes flag
+function resetUnsavedChanges() {
+  hasUnsavedChanges.value = false;
+}
+
+function saveDocument() {
+  // Reset any previous errors
+  titleError.value = "";
+
+  // Set the initial title value to the current document title
+  documentTitle.value = document.title || "";
+
+  // Show the title dialog
+  showTitleDialog.value = true;
+  pendingSave.value = true;
+}
+
+// Add a ref to store the navigation timeout
+const navigationTimeout = ref(null);
+
+// Function to handle the actual save after title is confirmed
+async function performSave() {
+  if (isSaving.value) return; // Prevent multiple simultaneous saves
+
+  // Clear any existing navigation timeout
+  if (navigationTimeout.value) {
+    clearTimeout(navigationTimeout.value);
+    navigationTimeout.value = null;
+  }
+
+  isSaving.value = true;
+  saveSuccess.value = false;
+  saveError.value = false;
+  saveMessage.value = "Saving document...";
+
   try {
-    await documentStore.saveDocument({
+    // Update the document title with the user input
+    document.title = documentTitle.value.trim() || "Untitled Document";
+
+    // Make sure we have at least one section
+    if (!document.sections || document.sections.length === 0) {
+      document.sections = [
+        {
+          id: "section-" + Date.now(),
+          title: "Section 1",
+          elements: [],
+        },
+      ];
+    }
+
+    // Prepare document for saving
+    const documentToSave = {
       id: document.id,
       title: document.title,
-      sections: document.sections
-    })
-    console.log('Document saved successfully')
+      createdAt: document.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      sections: document.sections,
+    };
+
+    console.log("Saving document to localStorage:", documentToSave.title);
+
+    // Save the document
+    const savedDocument = await documentStore.saveDocument(documentToSave);
+
+    // Update the document with the saved version
+    Object.assign(document, savedDocument);
+
+    // Reset unsaved changes flag BEFORE navigation
+    resetUnsavedChanges();
+
+    // Show success message
+    saveSuccess.value = true;
+    saveMessage.value = "Document saved successfully!";
+
+    // Wait a moment to show the success message before redirecting
+    navigationTimeout.value = setTimeout(() => {
+      // Navigate to the Dashboard page
+      console.log("Redirecting to Dashboard after successful save");
+      router.push("/");
+      navigationTimeout.value = null;
+    }, 1000); // Short delay to show the success message
+
+    console.log("Document saved successfully:", savedDocument.id);
+    return true;
   } catch (error) {
-    console.error('Error saving document:', error)
+    console.error("Error saving document:", error);
+
+    // Show error message
+    saveError.value = true;
+    saveMessage.value = "Failed to save document. Please try again.";
+
+    // Reset error message after 5 seconds
+    setTimeout(() => {
+      saveError.value = false;
+      saveMessage.value = "";
+    }, 5000);
+
+    return false;
+  } finally {
+    isSaving.value = false;
+    pendingSave.value = false;
+  }
+}
+
+// Function to confirm save with the entered title
+function confirmSaveWithTitle() {
+  // Validate the title
+  if (!documentTitle.value.trim()) {
+    titleError.value = "Please enter a document title";
+    return;
+  }
+
+  // Close the dialog
+  showTitleDialog.value = false;
+
+  // Perform the save
+  performSave();
+}
+
+// Function to cancel the save operation
+function cancelSave() {
+  showTitleDialog.value = false;
+  pendingSave.value = false;
+
+  // If this was triggered by navigation, cancel the navigation
+  if (pendingNavigation.value) {
+    pendingNavigation.value = null;
+  }
+}
+
+// Add autosave functionality
+// const lastEdit = ref(Date.now());
+const autoSaveInterval = 60000; // 1 minute
+let autoSaveTimer: number | null = null;
+
+// Watch for document changes and mark for autosave
+watch(
+  () => JSON.stringify(document),
+  () => {
+    lastEdit.value = Date.now();
+  },
+  { deep: true }
+);
+
+// Set up autosave timer
+onMounted(() => {
+  // Other onMounted code...
+
+  // Set up autosave
+  autoSaveTimer = window.setInterval(() => {
+    const timeSinceLastEdit = Date.now() - lastEdit.value;
+
+    // Only autosave if there have been changes and no save is in progress
+    if (timeSinceLastEdit < autoSaveInterval && !isSaving.value) {
+      console.log("Auto-saving document...");
+      saveDocument();
+    }
+  }, autoSaveInterval);
+
+  // Add keyboard shortcut for save
+  window.addEventListener("keydown", handleKeyDown);
+});
+
+// Clean up timers and event listeners
+onBeforeUnmount(() => {
+  if (autoSaveTimer !== null) {
+    clearInterval(autoSaveTimer);
+  }
+
+  window.removeEventListener("keydown", handleKeyDown);
+});
+
+// Handle keyboard shortcuts
+function handleKeyDown(event: KeyboardEvent) {
+  // Check for Ctrl+S or Cmd+S
+  if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+    event.preventDefault(); // Prevent browser's save dialog
+    saveDocument();
+  }
+}
+
+// Handle unsaved changes dialog actions
+async function handleUnsavedChanges(action) {
+  showUnsavedChangesDialog.value = false;
+
+  switch (action) {
+    case "save":
+      // Show title dialog first, then save
+      // Set pendingSave to true to prevent the unsaved changes dialog from showing again
+      pendingSave.value = true;
+      saveDocument();
+      break;
+
+    case "discard":
+      // Discard changes and navigate
+      resetUnsavedChanges();
+      if (pendingNavigation.value) {
+        router.push(pendingNavigation.value);
+        pendingNavigation.value = null;
+      }
+      break;
+
+    case "cancel":
+      // Stay on the current page
+      pendingNavigation.value = null;
+      break;
+  }
+}
+
+// Add navigation guard
+onMounted(() => {
+  // Other onMounted code...
+
+  // Add navigation guard and store the remove function
+  const removeGuard = router.beforeEach((to, from, next) => {
+    // Only apply this guard when navigating away from the editor
+    if (from.name !== "Editor") {
+      next();
+      return;
+    }
+
+    // If we have unsaved changes and we're not in the process of saving
+    if (
+      hasUnsavedChanges.value &&
+      !pendingSave.value &&
+      !isSaving.value &&
+      !saveSuccess.value
+    ) {
+      // Store the intended destination
+      pendingNavigation.value = to.fullPath;
+
+      // Show the confirmation dialog
+      showUnsavedChangesDialog.value = true;
+
+      // Prevent navigation for now
+      next(false);
+    } else {
+      // No unsaved changes or we're in the process of saving, proceed with navigation
+      next();
+    }
+  });
+
+  // Clean up the navigation guard when component is unmounted
+  onBeforeUnmount(() => {
+    // Remove the navigation guard
+    if (removeGuard) {
+      removeGuard();
+    }
+  });
+});
+
+// Also add a window beforeunload event to catch browser/tab closes
+onMounted(() => {
+  // Other onMounted code...
+
+  // Add beforeunload event listener
+  window.addEventListener("beforeunload", handleBeforeUnload);
+});
+
+onBeforeUnmount(() => {
+  // Other onBeforeUnmount code...
+
+  // Remove beforeunload event listener
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
+
+function handleBeforeUnload(event) {
+  // Only show the confirmation if we have unsaved changes and we're not in the process of saving
+  if (hasUnsavedChanges.value && !pendingSave.value && !isSaving.value) {
+    // Standard way to show a confirmation dialog when closing the browser
+    const message = "You have unsaved changes. Are you sure you want to leave?";
+    event.returnValue = message;
+    return message;
+  }
+}
+
+// Update navigation function to go directly to dashboard
+function navigateToDashboard() {
+  // If there are unsaved changes, confirm with the user
+  if (hasUnsavedChanges.value && !saveSuccess.value) {
+    if (confirm("You have unsaved changes. Are you sure you want to leave?")) {
+      router.push("/");
+    }
+  } else {
+    // If no unsaved changes, go directly to dashboard
+    router.push("/");
   }
 }
 </script>
@@ -717,5 +1094,19 @@ async function saveDocument() {
     flex: 1;
     overflow: auto;
   }
+}
+
+/* Add styles for the title dialog */
+:deep(.v-text-field) {
+  margin-top: 16px;
+}
+
+:deep(.v-card-title) {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+:deep(.v-card-text) {
+  padding-top: 0;
 }
 </style>
