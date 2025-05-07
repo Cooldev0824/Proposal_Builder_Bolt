@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     class="data-grid-element element"
     :class="{ selected: isSelected }"
     :style="elementStyle"
@@ -61,7 +61,8 @@ const elementStyle = computed(() => {
     height: `${props.element.size.height}px`,
     backgroundColor: 'white',
     borderRadius: '4px',
-    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)'
+    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+    zIndex: props.element.zIndex ?? 0
   }
 })
 
@@ -111,38 +112,38 @@ function onCellValueChanged(params: any) {
 }
 
 function startDrag(event: MouseEvent) {
-  if (event.target instanceof HTMLElement && 
-      (event.target.classList.contains('ag-cell') || 
+  if (event.target instanceof HTMLElement &&
+      (event.target.classList.contains('ag-cell') ||
        event.target.classList.contains('ag-header-cell'))) {
     return
   }
-  
+
   isDragging = true
   startX = event.clientX
   startY = event.clientY
   startLeft = props.element.position.x
   startTop = props.element.position.y
-  
+
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newPosition = {
     x: startLeft + deltaX,
     y: startTop + deltaY
   }
-  
+
   const updatedElement = {
     ...props.element,
     position: newPosition
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -158,29 +159,29 @@ function startResize(event: MouseEvent) {
   startY = event.clientY
   startWidth = props.element.size.width
   startHeight = props.element.size.height
-  
+
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
 }
 
 function onResize(event: MouseEvent) {
   if (!isResizing) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newSize = {
     width: Math.max(400, startWidth + deltaX),
     height: Math.max(200, startHeight + deltaY)
   }
-  
+
   const updatedElement = {
     ...props.element,
     size: newSize
   }
-  
+
   emit('update:element', updatedElement)
-  
+
   if (gridApi.value) {
     setTimeout(() => {
       gridApi.value?.sizeColumnsToFit()
@@ -206,7 +207,7 @@ onMounted(() => {
   position: absolute;
   cursor: move;
   overflow: hidden;
-  
+
   &.selected {
     outline: none;
   }
@@ -236,11 +237,11 @@ onMounted(() => {
   --ag-header-background-color: var(--surface);
   --ag-header-cell-hover-background-color: var(--surface);
   --ag-header-cell-moving-background-color: var(--surface);
-  
+
   .ag-header-cell {
     font-weight: 500;
   }
-  
+
   .ag-cell {
     font-size: 14px;
   }

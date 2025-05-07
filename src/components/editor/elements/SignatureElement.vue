@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     class="signature-element element"
     :class="{ selected: isSelected }"
     :style="elementStyle"
@@ -10,7 +10,7 @@
     </div>
     <img v-else :src="element.content" alt="Signature" class="signature-image" />
     <div v-if="isSelected" class="resize-handle" @mousedown.stop="startResize"></div>
-    
+
     <!-- Signature canvas dialog -->
     <v-dialog v-model="signatureDialog" max-width="600">
       <v-card>
@@ -73,7 +73,8 @@ const elementStyle = computed(() => {
     borderBottom: props.element.style?.borderBottom || '1px solid #000000',
     backgroundColor: 'white',
     borderRadius: '4px',
-    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)'
+    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+    zIndex: props.element.zIndex ?? 0
   }
 })
 
@@ -83,27 +84,27 @@ function startDrag(event: MouseEvent) {
   startY = event.clientY
   startLeft = props.element.position.x
   startTop = props.element.position.y
-  
+
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newPosition = {
     x: startLeft + deltaX,
     y: startTop + deltaY
   }
-  
+
   const updatedElement = {
     ...props.element,
     position: newPosition
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -119,27 +120,27 @@ function startResize(event: MouseEvent) {
   startY = event.clientY
   startWidth = props.element.size.width
   startHeight = props.element.size.height
-  
+
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
 }
 
 function onResize(event: MouseEvent) {
   if (!isResizing) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newSize = {
     width: Math.max(150, startWidth + deltaX),
     height: Math.max(50, startHeight + deltaY)
   }
-  
+
   const updatedElement = {
     ...props.element,
     size: newSize
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -158,7 +159,7 @@ function setupSignaturePad() {
     const canvas = signatureCanvas.value
     canvas.width = 560
     canvas.height = 260
-    
+
     signaturePad = new SignaturePad(canvas, {
       backgroundColor: 'rgb(255, 255, 255)',
       penColor: 'rgb(0, 0, 0)',
@@ -179,15 +180,15 @@ function clearSignature() {
 function saveSignature() {
   if (signaturePad && !signaturePad.isEmpty()) {
     const signatureData = signaturePad.toDataURL()
-    
+
     const updatedElement = {
       ...props.element,
       content: signatureData
     }
-    
+
     emit('update:element', updatedElement)
   }
-  
+
   signatureDialog.value = false
 }
 
@@ -217,7 +218,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  
+
   &.selected {
     outline: none;
   }

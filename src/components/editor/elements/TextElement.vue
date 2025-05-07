@@ -72,7 +72,8 @@ const elementStyle = computed(() => {
     padding: '8px',
     borderRadius: '4px',
     border: props.isSelected ? '2px solid var(--primary)' : '2px solid transparent',
-    cursor: isEditing.value ? 'text' : 'move'
+    cursor: isEditing.value ? 'text' : 'move',
+    zIndex: props.element.zIndex ?? 0
   }
 })
 

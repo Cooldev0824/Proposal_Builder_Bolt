@@ -331,9 +331,8 @@ onErrorCaptured((error, instance, info) => {
 .element-wrapper {
   position: relative;
 
-  &:hover {
-    z-index: 1000 !important; // Ensure layer controls are visible when hovering
-  }
+  // We no longer force z-index on hover to maintain proper layer ordering
+  // Layer controls will be visible due to their own z-index
 }
 
 .empty-page {

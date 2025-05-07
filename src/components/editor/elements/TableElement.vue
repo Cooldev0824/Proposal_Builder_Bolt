@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     class="table-element element"
     :class="{ selected: isSelected }"
     :style="elementStyle"
@@ -8,9 +8,9 @@
     <table class="editor-table" :style="tableStyle">
       <thead>
         <tr>
-          <th 
-            v-for="(header, index) in element.content.headers" 
-            :key="index" 
+          <th
+            v-for="(header, index) in element.content.headers"
+            :key="index"
             @dblclick="editCell('header', index)"
             :style="headerStyle"
           >
@@ -20,9 +20,9 @@
       </thead>
       <tbody>
         <tr v-for="(row, rowIndex) in element.content.rows" :key="rowIndex">
-          <td 
-            v-for="(cell, cellIndex) in row" 
-            :key="cellIndex" 
+          <td
+            v-for="(cell, cellIndex) in row"
+            :key="cellIndex"
             @dblclick="editCell('cell', rowIndex, cellIndex)"
             :style="cellStyle"
           >
@@ -32,7 +32,7 @@
       </tbody>
     </table>
     <div v-if="isSelected" class="resize-handle" @mousedown.stop="startResize"></div>
-    
+
     <!-- Cell edit dialog -->
     <v-dialog v-model="editDialog" max-width="400">
       <v-card>
@@ -87,7 +87,8 @@ const elementStyle = computed(() => {
     left: `${props.element.position.x}px`,
     top: `${props.element.position.y}px`,
     width: `${props.element.size.width}px`,
-    minHeight: `${props.element.size.height}px`
+    minHeight: `${props.element.size.height}px`,
+    zIndex: props.element.zIndex ?? 0
   }
 })
 
@@ -134,27 +135,27 @@ function startDrag(event: MouseEvent) {
   startY = event.clientY
   startLeft = props.element.position.x
   startTop = props.element.position.y
-  
+
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newPosition = {
     x: startLeft + deltaX,
     y: startTop + deltaY
   }
-  
+
   const updatedElement = {
     ...props.element,
     position: newPosition
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -170,27 +171,27 @@ function startResize(event: MouseEvent) {
   startY = event.clientY
   startWidth = props.element.size.width
   startHeight = props.element.size.height
-  
+
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
 }
 
 function onResize(event: MouseEvent) {
   if (!isResizing) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newSize = {
     width: Math.max(300, startWidth + deltaX),
     height: Math.max(100, startHeight + deltaY)
   }
-  
+
   const updatedElement = {
     ...props.element,
     size: newSize
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -203,7 +204,7 @@ function stopResize() {
 function editCell(type: 'header' | 'cell', rowIndex: number, cellIndex?: number) {
   editingCellType.value = type
   editingRowIndex.value = rowIndex
-  
+
   if (type === 'header') {
     editingCellValue.value = props.element.content.headers[rowIndex]
     editingCellIndex.value = -1
@@ -213,13 +214,13 @@ function editCell(type: 'header' | 'cell', rowIndex: number, cellIndex?: number)
       editingCellIndex.value = cellIndex
     }
   }
-  
+
   editDialog.value = true
 }
 
 function saveCellEdit() {
   const updatedElement = { ...props.element }
-  
+
   if (editingCellType.value === 'header') {
     updatedElement.content = {
       ...updatedElement.content,
@@ -231,11 +232,11 @@ function saveCellEdit() {
       ...updatedElement.content,
       rows: [...updatedElement.content.rows]
     }
-    
+
     updatedElement.content.rows[editingRowIndex.value] = [...updatedElement.content.rows[editingRowIndex.value]]
     updatedElement.content.rows[editingRowIndex.value][editingCellIndex.value] = editingCellValue.value
   }
-  
+
   emit('update:element', updatedElement)
   editDialog.value = false
 }
@@ -245,7 +246,7 @@ function saveCellEdit() {
 .element {
   position: absolute;
   cursor: move;
-  
+
   &.selected {
     outline: 2px solid var(--primary);
   }

@@ -81,7 +81,8 @@ const elementStyle = computed(() => {
     left: `${props.element.position.x}px`,
     top: `${props.element.position.y}px`,
     width: `${props.element.size.width}px`,
-    height: `${props.element.size.height}px`
+    height: `${props.element.size.height}px`,
+    zIndex: props.element.zIndex ?? 0
   }
 })
 
