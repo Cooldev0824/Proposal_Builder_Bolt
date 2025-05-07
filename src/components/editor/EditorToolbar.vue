@@ -103,6 +103,7 @@
         density="compact"
         class="paper-size-select"
         @update:model-value="changePaperSize"
+        return-object
       ></v-select>
 
       <!-- Orientation selector -->
@@ -236,7 +237,11 @@ const showGrid = ref(true); // Default to true
 
 // Paper size state
 const paperSizes = PAPER_SIZES;
-const selectedPaperSize = ref(props.paperSize || "Letter");
+const selectedPaperSize = ref(
+  paperSizes.find((size) => size.name === props.paperSize) ||
+    paperSizes.find((size) => size.name === "Letter") ||
+    paperSizes[0]
+);
 const selectedOrientation = ref(props.orientation || "portrait");
 
 // Watch for changes to the paperSize prop
@@ -244,7 +249,10 @@ watch(
   () => props.paperSize,
   (newValue) => {
     if (newValue) {
-      selectedPaperSize.value = newValue;
+      const paperSize = paperSizes.find((size) => size.name === newValue);
+      if (paperSize) {
+        selectedPaperSize.value = paperSize;
+      }
     }
   },
   { immediate: true }
@@ -312,9 +320,9 @@ function toggleGrid() {
 }
 
 // Paper size functions
-function changePaperSize(size: string) {
-  console.log("Paper size changed to:", size);
-  emit("tool-clicked", "paper-size", size);
+function changePaperSize(size: PaperSize) {
+  console.log("Paper size changed to:", size.name);
+  emit("tool-clicked", "paper-size", size.name);
 }
 
 function changeOrientation(orientation: string) {
