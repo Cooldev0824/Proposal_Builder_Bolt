@@ -312,14 +312,7 @@ function updateElement(element: DocumentElement) {
       (e) => e.id === element.id
     );
     if (elementIndex >= 0) {
-      // Update the element in the document
       document.sections[sectionIndex].elements[elementIndex] = element;
-
-      // If this is the currently selected element, update the selectedElement reference
-      if (selectedElement.value && selectedElement.value.id === element.id) {
-        selectedElement.value =
-          document.sections[sectionIndex].elements[elementIndex];
-      }
     }
   }
 }
@@ -1006,7 +999,7 @@ const saveError = ref(false);
 const saveMessage = ref("");
 const hasUnsavedChanges = ref(false);
 const showUnsavedChangesDialog = ref(false);
-const pendingNavigation = ref<string | null>(null);
+const pendingNavigation = ref(null);
 
 // Add these refs for the title dialog
 const showTitleDialog = ref(false);
@@ -1049,7 +1042,7 @@ function saveDocument() {
 }
 
 // Add a ref to store the navigation timeout
-const navigationTimeout = ref<number | null>(null);
+const navigationTimeout = ref(null);
 
 // Function to handle the actual save after title is confirmed
 async function performSave() {
@@ -1190,7 +1183,7 @@ onMounted(() => {
   //   }
   // }, autoSaveInterval);
 
-  // Add keyboard event listener
+  // Add keyboard shortcut for save
   window.addEventListener("keydown", handleKeyDown);
 });
 
@@ -1205,234 +1198,15 @@ onBeforeUnmount(() => {
 
 // Handle keyboard shortcuts
 function handleKeyDown(event: KeyboardEvent) {
-  // Don't handle keyboard events if they're in an input field or contenteditable element
-  if (isInputActive()) {
-    // For any input elements, don't handle keyboard shortcuts
-    // This includes text elements in edit mode
-    return;
-  }
-
   // Check for Ctrl+S or Cmd+S
   if ((event.ctrlKey || event.metaKey) && event.key === "s") {
     event.preventDefault(); // Prevent browser's save dialog
     saveDocument();
-    return;
   }
-
-  // Handle element movement with arrow keys
-  if (
-    selectedElement.value &&
-    ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
-  ) {
-    // Check if the selected element is a text element in edit mode
-    if (selectedElement.value.type === "text") {
-      // Check if any element with data-editing="true" exists in the DOM
-      // @ts-ignore - TypeScript doesn't recognize document.querySelectorAll
-      const editingElements = document.querySelectorAll(
-        '[data-editing="true"]'
-      );
-      if (editingElements.length > 0) {
-        console.log("Text element is in edit mode, not moving with arrow keys");
-        return; // Don't move the element if it's in edit mode
-      }
-
-      // Also check if any contenteditable element is focused
-      // @ts-ignore - TypeScript doesn't recognize document.activeElement
-      const activeElement = document.activeElement as HTMLElement | null;
-      if (activeElement && activeElement.isContentEditable) {
-        console.log(
-          "Contenteditable element is focused, not moving with arrow keys"
-        );
-        return; // Don't move the element if a contenteditable element is focused
-      }
-    }
-
-    event.preventDefault(); // Prevent page scrolling
-
-    // Move the element exactly 10px (or 1px with Shift) on each key press
-    moveSelectedElementWithArrowKeys(event.key, event.shiftKey);
-    return;
-  }
-
-  // Handle element deletion with Delete key
-  if (
-    selectedElement.value &&
-    (event.key === "Delete" || event.key === "Backspace")
-  ) {
-    // Check if the selected element is a text element in edit mode
-    if (selectedElement.value.type === "text") {
-      // Check if any element with data-editing="true" exists in the DOM
-      // @ts-ignore - TypeScript doesn't recognize document.querySelectorAll
-      const editingElements = document.querySelectorAll(
-        '[data-editing="true"]'
-      );
-      if (editingElements.length > 0) {
-        console.log(
-          "Text element is in edit mode, not deleting with Delete/Backspace"
-        );
-        return; // Don't delete the element if it's in edit mode
-      }
-
-      // Also check if any contenteditable element is focused
-      // @ts-ignore - TypeScript doesn't recognize document.activeElement
-      const activeElement = document.activeElement as HTMLElement | null;
-      if (activeElement && activeElement.isContentEditable) {
-        console.log(
-          "Contenteditable element is focused, not deleting with Delete/Backspace"
-        );
-        return; // Don't delete the element if a contenteditable element is focused
-      }
-    }
-
-    event.preventDefault();
-    deleteElement(selectedElement.value);
-    return;
-  }
-}
-
-// Helper function to check if an input element is active
-function isInputActive(): boolean {
-  // @ts-ignore - TypeScript doesn't recognize document.activeElement
-  const activeElement = document.activeElement as HTMLElement | null;
-  const tagName = activeElement?.tagName.toLowerCase();
-
-  // Check if the active element is an input field, textarea, or contenteditable element
-  const isInput =
-    tagName === "input" ||
-    tagName === "textarea" ||
-    tagName === "select" ||
-    activeElement?.isContentEditable === true;
-
-  // Also check if the active element is inside a text-element that's being edited
-  if (isInput && activeElement) {
-    // Check if the element itself or any parent has the text-element class
-    let element: HTMLElement | null = activeElement;
-    while (element) {
-      if (
-        element.classList.contains("text-element") ||
-        element.classList.contains("element-content") ||
-        element.getAttribute("data-editing") === "true" ||
-        element.getAttribute("contenteditable") === "true"
-      ) {
-        console.log("Input is inside a text element");
-        return true;
-      }
-      element = element.parentElement;
-    }
-  }
-
-  return isInput;
-}
-
-// Helper function to check if a text element is being edited
-// Note: This function is no longer used but kept for reference
-function isTextElementEditing(): boolean {
-  // Check if the active element is a contenteditable div inside a text-element
-  // @ts-ignore - TypeScript doesn't recognize document.activeElement
-  const activeElement = document.activeElement as HTMLElement | null;
-
-  if (!activeElement) return false;
-
-  // First, check if the element has the data-editing attribute
-  if (activeElement.getAttribute("data-editing") === "true") {
-    return true;
-  }
-
-  // Check if the active element is contenteditable
-  if (activeElement.isContentEditable) {
-    // Check if the element itself has the data-editing attribute
-    if (activeElement.getAttribute("data-editing") === "true") {
-      return true;
-    }
-
-    // Check if it's inside a text-element
-    let parent = activeElement.parentElement;
-    while (parent) {
-      if (parent.classList.contains("text-element")) {
-        return true;
-      }
-
-      // Also check if any parent has the data-editing attribute
-      if (parent.getAttribute("data-editing") === "true") {
-        return true;
-      }
-
-      parent = parent.parentElement;
-    }
-  }
-
-  return false;
-}
-
-// Move the selected element using arrow keys
-function moveSelectedElementWithArrowKeys(key: string, isShiftKey: boolean) {
-  if (!selectedElement.value) return;
-
-  // Check if the selected element is a text element in edit mode
-  if (selectedElement.value.type === "text") {
-    // Check if any element with data-editing="true" exists in the DOM
-    // @ts-ignore - TypeScript doesn't recognize document.querySelectorAll
-    const editingElements = document.querySelectorAll('[data-editing="true"]');
-    if (editingElements.length > 0) {
-      console.log("Text element is in edit mode, not moving with arrow keys");
-      return; // Don't move the element if it's in edit mode
-    }
-
-    // Also check if any contenteditable element is focused
-    // @ts-ignore - TypeScript doesn't recognize document.activeElement
-    const activeElement = document.activeElement as HTMLElement | null;
-    if (activeElement && activeElement.isContentEditable) {
-      console.log(
-        "Contenteditable element is focused, not moving with arrow keys"
-      );
-      return; // Don't move the element if a contenteditable element is focused
-    }
-  }
-
-  // Get the current position
-  const currentPosition = { ...selectedElement.value.position };
-
-  // Define the movement distance (10px by default, 1px with Shift key for fine control)
-  const distance = isShiftKey ? 1 : 10;
-
-  // Calculate the new position based on the arrow key
-  switch (key) {
-    case "ArrowUp":
-      currentPosition.y -= distance;
-      break;
-    case "ArrowDown":
-      currentPosition.y += distance;
-      break;
-    case "ArrowLeft":
-      currentPosition.x -= distance;
-      break;
-    case "ArrowRight":
-      currentPosition.x += distance;
-      break;
-  }
-
-  // Ensure the element stays within the page boundaries
-  currentPosition.x = Math.max(0, currentPosition.x);
-  currentPosition.y = Math.max(0, currentPosition.y);
-
-  // Update the element with the new position
-  const updatedElement = {
-    ...selectedElement.value,
-    position: currentPosition,
-  };
-
-  // Update the element in the document
-  // The updateElement function will also update the selectedElement reference
-  updateElement(updatedElement);
-
-  console.log(
-    `Moved element ${selectedElement.value.id} to position:`,
-    currentPosition
-  );
 }
 
 // Handle unsaved changes dialog actions
-async function handleUnsavedChanges(action: "save" | "discard" | "cancel") {
+async function handleUnsavedChanges(action) {
   showUnsavedChangesDialog.value = false;
 
   switch (action) {
@@ -1516,20 +1290,12 @@ onBeforeUnmount(() => {
   window.removeEventListener("beforeunload", handleBeforeUnload);
 });
 
-function handleBeforeUnload(event: BeforeUnloadEvent) {
+function handleBeforeUnload(event) {
   // Only show the confirmation if we have unsaved changes and we're not in the process of saving
   if (hasUnsavedChanges.value && !pendingSave.value && !isSaving.value) {
     // Standard way to show a confirmation dialog when closing the browser
     const message = "You have unsaved changes. Are you sure you want to leave?";
-
-    // Modern browsers standardized on using preventDefault() and setting returnValue
-    event.preventDefault();
-
-    // For older browsers, we still set returnValue (even though it's deprecated)
-    // This is needed for cross-browser compatibility
-    // @ts-ignore - Ignoring the deprecation warning
     event.returnValue = message;
-
     return message;
   }
 }
