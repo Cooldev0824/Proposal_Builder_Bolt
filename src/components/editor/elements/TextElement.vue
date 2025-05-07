@@ -532,12 +532,23 @@ function handleKeyDown(event: KeyboardEvent) {
 
 function handleFocus() {
   isEditing.value = true;
+
+  // Add a data attribute to indicate this element is being edited
+  if (contentElement.value) {
+    contentElement.value.setAttribute("data-editing", "true");
+  }
+
   // Check for selection when focused
   emitSelectionState();
 }
 
 function handleBlur() {
   isEditing.value = false;
+
+  // Remove the data attribute when editing is done
+  if (contentElement.value) {
+    contentElement.value.removeAttribute("data-editing");
+  }
 }
 
 // Selection is now handled by the global selection manager

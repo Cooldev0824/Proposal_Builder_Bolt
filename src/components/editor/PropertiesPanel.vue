@@ -74,6 +74,47 @@
 
       <v-divider class="my-4"></v-divider>
 
+      <!-- Keyboard shortcuts info -->
+      <div class="property-group">
+        <div class="property-group-title">Keyboard Shortcuts</div>
+        <div class="shortcut-info">
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <v-icon size="small">mdi-arrow-up</v-icon>
+              <v-icon size="small">mdi-arrow-down</v-icon>
+              <v-icon size="small">mdi-arrow-left</v-icon>
+              <v-icon size="small">mdi-arrow-right</v-icon>
+            </div>
+            <div class="shortcut-description">
+              Move element (10px per press)
+              <div class="shortcut-note">*When not editing text</div>
+            </div>
+          </div>
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <span class="key-combo">Shift + </span>
+              <v-icon size="small">mdi-arrow-up</v-icon>
+              <v-icon size="small">mdi-arrow-down</v-icon>
+              <v-icon size="small">mdi-arrow-left</v-icon>
+              <v-icon size="small">mdi-arrow-right</v-icon>
+            </div>
+            <div class="shortcut-description">
+              Fine movement (1px per press)
+              <div class="shortcut-note">*When not editing text</div>
+            </div>
+          </div>
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <v-icon size="small">mdi-keyboard-delete</v-icon>
+            </div>
+            <div class="shortcut-description">
+              Delete element
+              <div class="shortcut-note">*When not editing text</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="property-group">
         <div class="property-group-title">Actions</div>
@@ -95,97 +136,101 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { DocumentElement } from '../../types/document'
-import TextProperties from './properties/TextProperties.vue'
-import ImageProperties from './properties/ImageProperties.vue'
-import ShapeProperties from './properties/ShapeProperties.vue'
-import TableProperties from './properties/TableProperties.vue'
-import SignatureProperties from './properties/SignatureProperties.vue'
-import FormProperties from './properties/FormProperties.vue'
+import { ref, computed, watch } from "vue";
+import { DocumentElement } from "../../types/document";
+import TextProperties from "./properties/TextProperties.vue";
+import ImageProperties from "./properties/ImageProperties.vue";
+import ShapeProperties from "./properties/ShapeProperties.vue";
+import TableProperties from "./properties/TableProperties.vue";
+import SignatureProperties from "./properties/SignatureProperties.vue";
+import FormProperties from "./properties/FormProperties.vue";
 
 const props = defineProps<{
-  selectedElement: DocumentElement | null
-}>()
+  selectedElement: DocumentElement | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:element', element: DocumentElement): void
-  (e: 'delete-element', element: DocumentElement): void
-  (e: 'duplicate-element', element: DocumentElement): void
-  (e: 'close'): void
-}>()
+  (e: "update:element", element: DocumentElement): void;
+  (e: "delete-element", element: DocumentElement): void;
+  (e: "duplicate-element", element: DocumentElement): void;
+  (e: "close"): void;
+}>();
 
-const position = ref({ x: 0, y: 0 })
-const size = ref({ width: 0, height: 0 })
+const position = ref({ x: 0, y: 0 });
+const size = ref({ width: 0, height: 0 });
 
-watch(() => props.selectedElement, (newValue) => {
-  if (newValue) {
-    position.value = { ...newValue.position }
-    size.value = { ...newValue.size }
-  }
-}, { immediate: true, deep: true })
+watch(
+  () => props.selectedElement,
+  (newValue) => {
+    if (newValue) {
+      position.value = { ...newValue.position };
+      size.value = { ...newValue.size };
+    }
+  },
+  { immediate: true, deep: true }
+);
 
 function getPropertiesComponent(type: string) {
   switch (type) {
-    case 'text':
-      return TextProperties
-    case 'image':
-      return ImageProperties
-    case 'shape':
-      return ShapeProperties
-    case 'table':
-      return TableProperties
-    case 'signature':
-      return SignatureProperties
-    case 'form':
-      return FormProperties
+    case "text":
+      return TextProperties;
+    case "image":
+      return ImageProperties;
+    case "shape":
+      return ShapeProperties;
+    case "table":
+      return TableProperties;
+    case "signature":
+      return SignatureProperties;
+    case "form":
+      return FormProperties;
     default:
-      return null
+      return null;
   }
 }
 
 function formatElementType(type: string): string {
-  return type.charAt(0).toUpperCase() + type.slice(1) + ' Element'
+  return type.charAt(0).toUpperCase() + type.slice(1) + " Element";
 }
 
 function updatePosition() {
-  if (!props.selectedElement) return
+  if (!props.selectedElement) return;
 
   const updatedElement = {
     ...props.selectedElement,
-    position: { ...position.value }
-  }
+    position: { ...position.value },
+  };
 
-  emit('update:element', updatedElement)
+  emit("update:element", updatedElement);
 }
 
 function updateSize() {
-  if (!props.selectedElement) return
+  if (!props.selectedElement) return;
 
   const updatedElement = {
     ...props.selectedElement,
-    size: { ...size.value }
-  }
+    size: { ...size.value },
+  };
 
-  emit('update:element', updatedElement)
+  emit("update:element", updatedElement);
 }
 
 function updateElement(element: DocumentElement) {
-  emit('update:element', element)
+  emit("update:element", element);
 }
 
 function deleteElement() {
-  if (!props.selectedElement) return
-  emit('delete-element', props.selectedElement)
+  if (!props.selectedElement) return;
+  emit("delete-element", props.selectedElement);
 }
 
 function duplicateElement() {
-  if (!props.selectedElement) return
-  emit('duplicate-element', props.selectedElement)
+  if (!props.selectedElement) return;
+  emit("duplicate-element", props.selectedElement);
 }
 
 function closePanel() {
-  emit('close')
+  emit("close");
 }
 </script>
 
@@ -249,5 +294,50 @@ function closePanel() {
 
 .actions-row {
   margin-bottom: 8px;
+}
+
+.shortcut-info {
+  background-color: var(--surface);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 12px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.shortcut-keys {
+  display: flex;
+  align-items: center;
+  min-width: 100px;
+  margin-right: 8px;
+
+  .v-icon {
+    margin-right: 2px;
+  }
+
+  .key-combo {
+    font-size: 12px;
+    margin-right: 2px;
+  }
+}
+
+.shortcut-description {
+  color: var(--text-secondary);
+
+  .shortcut-note {
+    font-size: 11px;
+    font-style: italic;
+    margin-top: 2px;
+    color: var(--text-disabled, #999);
+  }
 }
 </style>
