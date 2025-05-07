@@ -26,7 +26,14 @@
       <div class="main-editor" ref="editorContainer">
         <Ruler :visible="showRuler" :zoom="zoom" />
 
-        <div class="editor-content" :style="editorContentStyle">
+        <div
+          class="editor-content"
+          :style="editorContentStyle"
+          @mousedown="startDrawing"
+          @mousemove="updateDrawing"
+          @mouseup="finishDrawing"
+          @mouseleave="cancelDrawing"
+        >
           <DocumentPage
             v-for="(section, index) in document?.sections &&
             document?.sections.length > 0
@@ -36,6 +43,8 @@
             :section="section"
             :isActive="currentSection === index"
             :showGrid="showGrid"
+            :isDrawing="isDrawing && currentSection === index"
+            :drawingRectStyle="drawingRectangleStyle"
             @element-selected="selectElement"
             @element-updated="updateElement"
             @move-element-up="moveElementUp"
@@ -165,10 +174,44 @@ const showPreview = ref(false);
 const showLayerPanel = ref(true); // Always show layer panel
 const activeTab = ref("properties"); // Default to properties tab
 
+// Drawing state for creating elements by drawing an area
+const isDrawing = ref(false);
+const drawingTool = ref<string | null>(null);
+const drawStartX = ref(0);
+const drawStartY = ref(0);
+const drawEndX = ref(0);
+const drawEndY = ref(0);
+const drawingRect = ref<HTMLElement | null>(null);
+
 const editorContentStyle = computed(() => ({
   transform: `scale(${zoom.value})`,
   transformOrigin: "0 0",
 }));
+
+// Computed style for the drawing rectangle
+const drawingRectangleStyle = computed(() => {
+  if (!isDrawing.value) {
+    return {
+      left: "0px",
+      top: "0px",
+      width: "0px",
+      height: "0px",
+    };
+  }
+
+  // Calculate the rectangle dimensions
+  const left = Math.min(drawStartX.value, drawEndX.value);
+  const top = Math.min(drawStartY.value, drawEndY.value);
+  const width = Math.abs(drawEndX.value - drawStartX.value);
+  const height = Math.abs(drawEndY.value - drawStartY.value);
+
+  return {
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+  };
+});
 
 // Get elements from the current section for the layer panel
 const currentSectionElements = computed(() => {
@@ -298,6 +341,159 @@ function duplicateElement(element: DocumentElement) {
   selectedElement.value = newElement;
 }
 
+// Drawing functions for creating elements
+function startDrawing(event: MouseEvent) {
+  // Only start drawing if a drawing tool is selected
+  if (!drawingTool.value) return;
+
+  // Find the active document page
+  const activePage = findActiveDocumentPage(event);
+  if (!activePage) return;
+
+  // Get the position relative to the active document page content
+  const pageRect = activePage.getBoundingClientRect();
+  const x = (event.clientX - pageRect.left) / zoom.value;
+  const y = (event.clientY - pageRect.top) / zoom.value;
+
+  // Set the starting position
+  drawStartX.value = x;
+  drawStartY.value = y;
+  drawEndX.value = x;
+  drawEndY.value = y;
+
+  // Start drawing
+  isDrawing.value = true;
+}
+
+function updateDrawing(event: MouseEvent) {
+  // Only update if we're drawing
+  if (!isDrawing.value) return;
+
+  // Find the active document page
+  const activePage = findActiveDocumentPage(event);
+  if (!activePage) return;
+
+  // Get the position relative to the active document page content
+  const pageRect = activePage.getBoundingClientRect();
+  const x = (event.clientX - pageRect.left) / zoom.value;
+  const y = (event.clientY - pageRect.top) / zoom.value;
+
+  // Update the end position
+  drawEndX.value = x;
+  drawEndY.value = y;
+}
+
+function finishDrawing(event: MouseEvent) {
+  // Only finish if we're drawing
+  if (!isDrawing.value) return;
+
+  // Find the active document page
+  const activePage = findActiveDocumentPage(event);
+  if (!activePage) {
+    // Reset drawing state if no active page found
+    isDrawing.value = false;
+    drawingTool.value = null;
+    return;
+  }
+
+  // Get the position relative to the active document page content
+  const pageRect = activePage.getBoundingClientRect();
+  const x = (event.clientX - pageRect.left) / zoom.value;
+  const y = (event.clientY - pageRect.top) / zoom.value;
+
+  // Update the end position
+  drawEndX.value = x;
+  drawEndY.value = y;
+
+  // Calculate the rectangle dimensions
+  const left = Math.min(drawStartX.value, drawEndX.value);
+  const top = Math.min(drawStartY.value, drawEndY.value);
+  const width = Math.abs(drawEndX.value - drawStartX.value);
+  const height = Math.abs(drawEndY.value - drawStartY.value);
+
+  // Get the page content element to account for its padding
+  const pageContent = activePage.querySelector(".page-content");
+  let adjustedLeft = left;
+  let adjustedTop = top;
+
+  if (pageContent) {
+    // Get the computed style to account for padding
+    const style = window.getComputedStyle(pageContent);
+    const paddingLeft = parseFloat(style.paddingLeft) || 0;
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+
+    // Adjust the position to account for the page content padding
+    adjustedLeft = Math.max(0, left - paddingLeft);
+    adjustedTop = Math.max(0, top - paddingTop);
+  }
+
+  // Only create an element if the area is large enough
+  if (width > 10 && height > 10) {
+    // Create the element based on the drawing tool
+    switch (drawingTool.value) {
+      case "text":
+        addTextElement(adjustedLeft, adjustedTop, width, height);
+        break;
+      case "image":
+        addImageElement(adjustedLeft, adjustedTop, width, height);
+        break;
+      case "shape":
+        addShapeElement(adjustedLeft, adjustedTop, width, height);
+        break;
+      case "line":
+        addLineElement(adjustedLeft, adjustedTop, width, height);
+        break;
+      case "table":
+        addTableElement(adjustedLeft, adjustedTop, width, height);
+        break;
+      case "signature":
+        addSignatureElement(adjustedLeft, adjustedTop, width, height);
+        break;
+      case "form":
+        addFormElement(adjustedLeft, adjustedTop, width, height);
+        break;
+      case "grid-element":
+        addGridElement(adjustedLeft, adjustedTop, width, height);
+        break;
+    }
+  }
+
+  // Reset drawing state
+  isDrawing.value = false;
+  drawingTool.value = null;
+}
+
+// Helper function to find the active document page
+function findActiveDocumentPage(event: MouseEvent): HTMLElement | null {
+  // Try to find the document page that contains the event target
+  let element = event.target as HTMLElement;
+  while (element && !element.classList.contains("document-page")) {
+    element = element.parentElement as HTMLElement;
+  }
+
+  // If we found a document page, return it
+  if (element && element.classList.contains("document-page")) {
+    return element;
+  }
+
+  // If we couldn't find a document page from the event target,
+  // try to find the active document page from the refs
+  if (documentPageRefs.value && documentPageRefs.value.length > 0) {
+    const activePageRef = documentPageRefs.value[currentSection.value];
+    if (activePageRef && activePageRef.$el) {
+      return activePageRef.$el;
+    }
+  }
+
+  return null;
+}
+
+function cancelDrawing() {
+  // Reset drawing state
+  isDrawing.value = false;
+  drawingTool.value = null;
+}
+
 // Text selection is now handled by the global selection manager
 
 function handleToolClick(tool: string, value?: any) {
@@ -335,35 +531,43 @@ function handleToolClick(tool: string, value?: any) {
       break;
 
     case "text":
-      addTextElement();
+      // Set the drawing tool to text and wait for user to draw
+      drawingTool.value = "text";
       break;
 
     case "image":
-      addImageElement();
+      // Set the drawing tool to image and wait for user to draw
+      drawingTool.value = "image";
       break;
 
     case "shape":
-      addShapeElement();
+      // Set the drawing tool to shape and wait for user to draw
+      drawingTool.value = "shape";
       break;
 
     case "line":
-      addLineElement();
+      // Set the drawing tool to line and wait for user to draw
+      drawingTool.value = "line";
       break;
 
     case "table":
-      addTableElement();
+      // Set the drawing tool to table and wait for user to draw
+      drawingTool.value = "table";
       break;
 
     case "signature":
-      addSignatureElement();
+      // Set the drawing tool to signature and wait for user to draw
+      drawingTool.value = "signature";
       break;
 
     case "form":
-      addFormElement();
+      // Set the drawing tool to form and wait for user to draw
+      drawingTool.value = "form";
       break;
 
     case "grid-element":
-      addGridElement();
+      // Set the drawing tool to grid and wait for user to draw
+      drawingTool.value = "grid-element";
       break;
 
     case "preview":
@@ -372,7 +576,12 @@ function handleToolClick(tool: string, value?: any) {
   }
 }
 
-function addTextElement() {
+function addTextElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   // Get highest zIndex in current section to place new element on top
   const highestZIndex = getHighestZIndex();
 
@@ -380,8 +589,8 @@ function addTextElement() {
     id: "text-" + Date.now(),
     type: "text",
     content: "New text block",
-    position: { x: 100, y: 100 },
-    size: { width: 300, height: 100 },
+    position: { x: x ?? 100, y: y ?? 100 },
+    size: { width: width ?? 300, height: height ?? 100 },
     style: {
       fontFamily: "Roboto",
       fontSize: 16,
@@ -417,7 +626,12 @@ function getHighestZIndex(): number {
   return highestZIndex;
 }
 
-function addImageElement() {
+function addImageElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
@@ -425,8 +639,8 @@ function addImageElement() {
     type: "image",
     content:
       "https://images.pexels.com/photos/3760514/pexels-photo-3760514.jpeg",
-    position: { x: 100, y: 100 },
-    size: { width: 300, height: 200 },
+    position: { x: x ?? 100, y: y ?? 100 },
+    size: { width: width ?? 300, height: height ?? 200 },
     style: {
       borderRadius: 0,
       borderWidth: 0,
@@ -439,15 +653,20 @@ function addImageElement() {
   selectElement(newElement);
 }
 
-function addShapeElement() {
+function addShapeElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
     id: "shape-" + Date.now(),
     type: "shape",
     content: "rectangle",
-    position: { x: 100, y: 100 },
-    size: { width: 200, height: 100 },
+    position: { x: x ?? 100, y: y ?? 100 },
+    size: { width: width ?? 200, height: height ?? 100 },
     style: {
       fill: "#E2E8F0",
       stroke: "#CBD5E1",
@@ -460,15 +679,20 @@ function addShapeElement() {
   selectElement(newElement);
 }
 
-function addLineElement() {
+function addLineElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
     id: "line-" + Date.now(),
     type: "shape",
     content: "line",
-    position: { x: 100, y: 100 },
-    size: { width: 200, height: 2 },
+    position: { x: x ?? 100, y: y ?? 100 },
+    size: { width: width ?? 200, height: height ?? 2 },
     style: {
       stroke: "#000000",
       strokeWidth: 2,
@@ -480,7 +704,12 @@ function addLineElement() {
   selectElement(newElement);
 }
 
-function addTableElement() {
+function addTableElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
@@ -490,8 +719,8 @@ function addTableElement() {
       headers: ["Item", "Description", "Price"],
       rows: [["", "", ""]],
     },
-    position: { x: 50, y: 100 },
-    size: { width: 600, height: 200 },
+    position: { x: x ?? 50, y: y ?? 100 },
+    size: { width: width ?? 600, height: height ?? 200 },
     style: {
       headerBackgroundColor: "#F8F9FA",
       headerTextColor: "#000000",
@@ -505,15 +734,20 @@ function addTableElement() {
   selectElement(newElement);
 }
 
-function addSignatureElement() {
+function addSignatureElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
     id: "signature-" + Date.now(),
     type: "signature",
     content: "",
-    position: { x: 100, y: 400 },
-    size: { width: 300, height: 100 },
+    position: { x: x ?? 100, y: y ?? 400 },
+    size: { width: width ?? 300, height: height ?? 100 },
     style: {
       borderBottom: "1px solid #000000",
       label: "Signature",
@@ -524,7 +758,12 @@ function addSignatureElement() {
   selectElement(newElement);
 }
 
-function addFormElement() {
+function addFormElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
@@ -535,8 +774,8 @@ function addFormElement() {
       label: "Input Label",
       inputType: "text",
     },
-    position: { x: 100, y: 100 },
-    size: { width: 300, height: 80 },
+    position: { x: x ?? 100, y: y ?? 100 },
+    size: { width: width ?? 300, height: height ?? 80 },
     style: {
       backgroundColor: "white",
     },
@@ -546,7 +785,12 @@ function addFormElement() {
   selectElement(newElement);
 }
 
-function addGridElement() {
+function addGridElement(
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number
+) {
   const highestZIndex = getHighestZIndex();
 
   const newElement: DocumentElement = {
@@ -558,8 +802,8 @@ function addGridElement() {
         { type: "image", content: "", size: 1 },
       ],
     },
-    position: { x: 100, y: 100 },
-    size: { width: 600, height: 300 },
+    position: { x: x ?? 100, y: y ?? 100 },
+    size: { width: width ?? 600, height: height ?? 300 },
     style: {
       backgroundColor: "white",
       borderColor: "#E2E8F0",
