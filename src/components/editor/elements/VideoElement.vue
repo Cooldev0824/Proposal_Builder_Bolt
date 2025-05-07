@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     class="video-element element"
     :class="{ selected: isSelected }"
     :style="elementStyle"
@@ -9,15 +9,15 @@
       <v-icon size="32" color="grey">mdi-video</v-icon>
       <span>Click to add video</span>
     </div>
-    <video 
-      v-else 
+    <video
+      v-else
       :src="element.content"
       controls
       class="video-player"
       @error="handleVideoError"
     ></video>
     <div v-if="isSelected" class="resize-handle" @mousedown.stop="startResize"></div>
-    
+
     <v-dialog v-model="videoDialog" max-width="500">
       <v-card>
         <v-card-title>Add Video</v-card-title>
@@ -78,7 +78,8 @@ const elementStyle = computed(() => {
     height: `${props.element.size.height}px`,
     backgroundColor: '#f5f5f5',
     borderRadius: '4px',
-    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)'
+    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+    zIndex: props.element.zIndex ?? 0
   }
 })
 
@@ -108,27 +109,27 @@ function startDrag(event: MouseEvent) {
   startY = event.clientY
   startLeft = props.element.position.x
   startTop = props.element.position.y
-  
+
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newPosition = {
     x: startLeft + deltaX,
     y: startTop + deltaY
   }
-  
+
   const updatedElement = {
     ...props.element,
     position: newPosition
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -144,32 +145,32 @@ function startResize(event: MouseEvent) {
   startY = event.clientY
   startWidth = props.element.size.width
   startHeight = props.element.size.height
-  
+
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
 }
 
 function onResize(event: MouseEvent) {
   if (!isResizing) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   // Maintain 16:9 aspect ratio
   const aspectRatio = 16/9
   const newWidth = Math.max(200, startWidth + deltaX)
   const newHeight = newWidth / aspectRatio
-  
+
   const newSize = {
     width: newWidth,
     height: newHeight
   }
-  
+
   const updatedElement = {
     ...props.element,
     size: newSize
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -185,7 +186,7 @@ function stopResize() {
   position: absolute;
   cursor: move;
   overflow: hidden;
-  
+
   &.selected {
     outline: none;
   }
@@ -200,7 +201,7 @@ function stopResize() {
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  
+
   &:hover {
     background-color: #eee;
   }

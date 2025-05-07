@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     class="form-element element"
     :class="{ selected: isSelected }"
     :style="elementStyle"
@@ -7,8 +7,8 @@
   >
     <div class="form-content" :style="contentStyle">
       <template v-if="element.content.type === 'checkbox'">
-        <div 
-          v-for="(option, index) in element.content.options" 
+        <div
+          v-for="(option, index) in element.content.options"
           :key="index"
           class="checkbox-option"
         >
@@ -21,7 +21,7 @@
           ></v-checkbox>
         </div>
       </template>
-      
+
       <template v-else-if="element.content.type === 'radio'">
         <v-radio-group
           v-model="selectedOption"
@@ -37,7 +37,7 @@
           ></v-radio>
         </v-radio-group>
       </template>
-      
+
       <template v-else-if="element.content.type === 'select'">
         <v-select
           v-model="selectedOption"
@@ -48,7 +48,7 @@
           hide-details
         ></v-select>
       </template>
-      
+
       <template v-else-if="element.content.type === 'textfield'">
         <v-text-field
           v-model="textValue"
@@ -59,7 +59,7 @@
           hide-details
         ></v-text-field>
       </template>
-      
+
       <template v-else-if="element.content.type === 'textarea'">
         <v-textarea
           v-model="textValue"
@@ -71,7 +71,7 @@
         ></v-textarea>
       </template>
     </div>
-    
+
     <div v-if="isSelected" class="resize-handle" @mousedown.stop="startResize"></div>
   </div>
 </template>
@@ -114,7 +114,8 @@ const elementStyle = computed(() => {
     minHeight: `${props.element.size.height}px`,
     backgroundColor: props.element.style?.backgroundColor || 'white',
     borderRadius: '4px',
-    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)'
+    border: props.isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+    zIndex: props.element.zIndex ?? 0
   }
 })
 
@@ -141,27 +142,27 @@ function startDrag(event: MouseEvent) {
   startY = event.clientY
   startLeft = props.element.position.x
   startTop = props.element.position.y
-  
+
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newPosition = {
     x: startLeft + deltaX,
     y: startTop + deltaY
   }
-  
+
   const updatedElement = {
     ...props.element,
     position: newPosition
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -177,27 +178,27 @@ function startResize(event: MouseEvent) {
   startY = event.clientY
   startWidth = props.element.size.width
   startHeight = props.element.size.height
-  
+
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
 }
 
 function onResize(event: MouseEvent) {
   if (!isResizing) return
-  
+
   const deltaX = event.clientX - startX
   const deltaY = event.clientY - startY
-  
+
   const newSize = {
     width: Math.max(200, startWidth + deltaX),
     height: Math.max(50, startHeight + deltaY)
   }
-  
+
   const updatedElement = {
     ...props.element,
     size: newSize
   }
-  
+
   emit('update:element', updatedElement)
 }
 
@@ -212,7 +213,7 @@ function stopResize() {
 .form-element {
   position: absolute;
   cursor: move;
-  
+
   &.selected {
     outline: none;
   }
@@ -220,10 +221,10 @@ function stopResize() {
 
 .form-content {
   height: 100%;
-  
+
   .checkbox-option {
     margin-bottom: 8px;
-    
+
     &:last-child {
       margin-bottom: 0;
     }

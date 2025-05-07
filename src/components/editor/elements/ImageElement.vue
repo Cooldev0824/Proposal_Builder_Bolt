@@ -56,7 +56,8 @@ const elementStyle = computed(() => {
     borderRadius: `${props.element.style?.borderRadius || 0}px`,
     border: props.element.style?.borderWidth ? `${props.element.style.borderWidth}px solid ${props.element.style.borderColor}` : 'none',
     opacity: props.element.style?.opacity || 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#f5f5f5',
+    zIndex: props.element.zIndex ?? 0
   }
 })
 
