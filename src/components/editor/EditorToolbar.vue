@@ -93,34 +93,16 @@
     <div class="toolbar-divider"></div>
 
     <div class="toolbar-group">
-      <!-- Paper size selector -->
-      <v-select
-        v-model="selectedPaperSize"
-        :items="paperSizes"
-        item-title="description"
-        item-value="name"
-        label="Paper Size"
-        density="compact"
-        class="paper-size-select"
-        @update:model-value="changePaperSize"
-        return-object
-      ></v-select>
-
-      <!-- Orientation selector -->
-      <v-btn-toggle
-        v-model="selectedOrientation"
-        mandatory
-        @update:model-value="changeOrientation"
+      <!-- Document size button -->
+      <v-btn
+        @click="openDocumentSizeDialog"
+        size="small"
+        variant="outlined"
+        class="document-size-btn"
       >
-        <v-btn value="portrait" size="small">
-          <v-icon>mdi-page-layout-header</v-icon>
-          <v-tooltip activator="parent" location="bottom">Portrait</v-tooltip>
-        </v-btn>
-        <v-btn value="landscape" size="small">
-          <v-icon>mdi-page-layout-sidebar-right</v-icon>
-          <v-tooltip activator="parent" location="bottom">Landscape</v-tooltip>
-        </v-btn>
-      </v-btn-toggle>
+        <v-icon class="mr-1">mdi-file-document-outline</v-icon>
+        <span>{{ selectedPaperSize.name }} ({{ selectedOrientation }})</span>
+      </v-btn>
     </div>
 
     <div class="toolbar-divider"></div>
@@ -320,14 +302,8 @@ function toggleGrid() {
 }
 
 // Paper size functions
-function changePaperSize(size: PaperSize) {
-  console.log("Paper size changed to:", size.name);
-  emit("tool-clicked", "paper-size", size.name);
-}
-
-function changeOrientation(orientation: string) {
-  console.log("Orientation changed to:", orientation);
-  emit("tool-clicked", "orientation", orientation);
+function openDocumentSizeDialog() {
+  emit("tool-clicked", "document-size");
 }
 </script>
 
@@ -362,8 +338,8 @@ function changeOrientation(orientation: string) {
   width: 140px;
 }
 
-.paper-size-select {
-  width: 180px;
+.document-size-btn {
+  min-width: 150px;
 }
 
 @media (max-width: 1200px) {

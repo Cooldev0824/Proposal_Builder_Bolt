@@ -93,6 +93,15 @@
 
     <PreviewDialog v-model="showPreview" :document="document" />
 
+    <!-- Document Size Dialog -->
+    <DocumentSizeDialog
+      v-model="showDocumentSizeDialog"
+      :paperSize="document.paperSize"
+      :orientation="document.orientation"
+      @update:paperSize="updatePaperSize"
+      @update:orientation="updateOrientation"
+    />
+
     <!-- Add confirmation dialog -->
     <v-dialog v-model="showUnsavedChangesDialog" max-width="400">
       <v-card>
@@ -150,6 +159,7 @@ import PropertiesPanel from "../components/editor/PropertiesPanel.vue";
 import LayerControlPanel from "../components/editor/LayerControlPanel.vue";
 import Ruler from "../components/editor/Ruler.vue";
 import PreviewDialog from "../components/editor/PreviewDialog.vue";
+import DocumentSizeDialog from "../components/editor/DocumentSizeDialog.vue";
 import { useDocumentStore } from "../stores/documentStore";
 import { useHistoryStore } from "../stores/historyStore";
 import { Section, DocumentElement, Document } from "../types/document";
@@ -177,6 +187,7 @@ const showRuler = ref(false);
 const showGrid = ref(true); // Show grid by default
 const zoom = ref(1);
 const showPreview = ref(false);
+const showDocumentSizeDialog = ref(false);
 const showLayerPanel = ref(true); // Always show layer panel
 const activeTab = ref("properties"); // Default to properties tab
 
@@ -546,6 +557,11 @@ function handleToolClick(tool: string, value?: any) {
       // Update the document's orientation
       document.orientation = value as "portrait" | "landscape";
       console.log("Document orientation changed to:", value);
+      break;
+
+    case "document-size":
+      // Open the document size dialog
+      showDocumentSizeDialog.value = true;
       break;
 
     case "text":
@@ -957,6 +973,17 @@ function moveElementToBottom(element: DocumentElement) {
     const updatedElement = { ...element, zIndex: lowestZIndex - 1 };
     updateElement(updatedElement);
   }
+}
+
+// Document size functions
+function updatePaperSize(size: string) {
+  document.paperSize = size;
+  console.log("Document paper size updated to:", size);
+}
+
+function updateOrientation(orientation: "portrait" | "landscape") {
+  document.orientation = orientation;
+  console.log("Document orientation updated to:", orientation);
 }
 
 // Grid functions
