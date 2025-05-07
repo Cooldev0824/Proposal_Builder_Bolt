@@ -12,13 +12,13 @@ let savedElement: HTMLElement | null = null;
 export function saveSelection(): boolean {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) {
-    console.log('No selection found');
+    console.log("No selection found");
     return false;
   }
 
   const range = selection.getRangeAt(0);
   if (range.collapsed) {
-    console.log('Selection is collapsed (no text selected)');
+    console.log("Selection is collapsed (no text selected)");
     return false;
   }
 
@@ -29,19 +29,19 @@ export function saveSelection(): boolean {
   }
 
   // Find the closest contenteditable element
-  while (element && !element.hasAttribute('contenteditable')) {
+  while (element && !element.hasAttribute("contenteditable")) {
     element = element.parentElement as HTMLElement;
   }
 
   if (!element) {
-    console.log('No contenteditable element found');
+    console.log("No contenteditable element found");
     return false;
   }
 
   // Make sure the selection is within a text element
-  const textElement = element.closest('.text-element');
+  const textElement = element.closest(".text-element");
   if (!textElement) {
-    console.log('Selection is not within a text element');
+    console.log("Selection is not within a text element");
     return false;
   }
 
@@ -49,10 +49,10 @@ export function saveSelection(): boolean {
   savedRange = range.cloneRange();
   savedElement = element;
 
-  console.log('Selection saved', {
+  console.log("Selection saved", {
     text: range.toString(),
     element: element.tagName,
-    textElement: textElement.getAttribute('data-element-id') || 'unknown'
+    textElement: textElement.getAttribute("data-element-id") || "unknown",
   });
 
   return true;
@@ -66,7 +66,7 @@ export function restoreSelection(): boolean {
 
   // Don't interfere with input fields
   if (isInputActive()) {
-    console.log('Cannot restore selection: Input field is active');
+    console.log("Cannot restore selection: Input field is active");
     return false;
   }
 
@@ -81,10 +81,10 @@ export function restoreSelection(): boolean {
     selection.removeAllRanges();
     selection.addRange(savedRange.cloneRange());
 
-    console.log('Selection restored');
+    console.log("Selection restored");
     return true;
   } catch (error) {
-    console.error('Error restoring selection:', error);
+    console.error("Error restoring selection:", error);
     return false;
   }
 }
@@ -107,15 +107,18 @@ export function clearSelection(): void {
 /**
  * Apply a formatting command to the saved selection
  */
-export function applyFormatting(command: string, value: string | boolean | null = null): boolean {
+export function applyFormatting(
+  command: string,
+  value: string | boolean | null = null
+): boolean {
   // Don't interfere with input fields
   if (isInputActive()) {
-    console.log('Cannot apply formatting: Input field is active');
+    console.log("Cannot apply formatting: Input field is active");
     return false;
   }
 
   if (!savedRange || !savedElement) {
-    console.error('Cannot apply formatting: No saved selection');
+    console.error("Cannot apply formatting: No saved selection");
     return false;
   }
 
@@ -136,7 +139,7 @@ export function applyFormatting(command: string, value: string | boolean | null 
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error('Invalid selection range');
+      console.error("Invalid selection range");
       return false;
     }
 
@@ -145,7 +148,12 @@ export function applyFormatting(command: string, value: string | boolean | null 
     const isMultiLine = isMultiLineSelection(currentRange);
 
     // For multi-line selections with certain commands, use our custom approach
-    if (isMultiLine && (command === 'foreColor' || command === 'backColor' || command === 'fontSize')) {
+    if (
+      isMultiLine &&
+      (command === "foreColor" ||
+        command === "backColor" ||
+        command === "fontSize")
+    ) {
       console.log(`Using custom approach for multi-line ${command}`);
 
       // Map command to style property
@@ -153,21 +161,21 @@ export function applyFormatting(command: string, value: string | boolean | null 
       let styleValue: string;
 
       switch (command) {
-        case 'foreColor':
-          styleProperty = 'color';
+        case "foreColor":
+          styleProperty = "color";
           styleValue = value as string;
           break;
-        case 'backColor':
-          styleProperty = 'backgroundColor';
+        case "backColor":
+          styleProperty = "backgroundColor";
           styleValue = value as string;
           break;
-        case 'fontSize':
-          styleProperty = 'fontSize';
+        case "fontSize":
+          styleProperty = "fontSize";
           styleValue = `${value}px`;
           break;
         default:
           // For other commands, try the standard execCommand
-          document.execCommand('styleWithCSS', false, 'true');
+          document.execCommand("styleWithCSS", false, "true");
           const result = document.execCommand(command, false, value as string);
 
           // Save the selection again to preserve it for future operations
@@ -177,10 +185,14 @@ export function applyFormatting(command: string, value: string | boolean | null 
           return result;
       }
 
-      return applyStyleToMultiLineSelection(currentRange, styleProperty, styleValue);
+      return applyStyleToMultiLineSelection(
+        currentRange,
+        styleProperty,
+        styleValue
+      );
     } else {
       // For single-line selections or other commands, use the standard execCommand
-      document.execCommand('styleWithCSS', false, 'true');
+      document.execCommand("styleWithCSS", false, "true");
       const result = document.execCommand(command, false, value as string);
 
       // Save the selection again to preserve it for future operations
@@ -199,28 +211,28 @@ export function applyFormatting(command: string, value: string | boolean | null 
  * Apply bold formatting to the saved selection
  */
 export function applyBold(): boolean {
-  return applyFormatting('bold');
+  return applyFormatting("bold");
 }
 
 /**
  * Apply italic formatting to the saved selection
  */
 export function applyItalic(): boolean {
-  return applyFormatting('italic');
+  return applyFormatting("italic");
 }
 
 /**
  * Apply underline formatting to the saved selection
  */
 export function applyUnderline(): boolean {
-  return applyFormatting('underline');
+  return applyFormatting("underline");
 }
 
 /**
  * Apply font family to the saved selection
  */
 export function applyFontFamily(fontFamily: string): boolean {
-  return applyFormatting('fontName', fontFamily);
+  return applyFormatting("fontName", fontFamily);
 }
 
 /**
@@ -228,7 +240,7 @@ export function applyFontFamily(fontFamily: string): boolean {
  */
 export function applyFontSize(fontSize: number): boolean {
   if (!savedRange || !savedElement) {
-    console.error('Cannot apply font size: No saved selection');
+    console.error("Cannot apply font size: No saved selection");
     return false;
   }
 
@@ -249,7 +261,7 @@ export function applyFontSize(fontSize: number): boolean {
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error('Invalid selection range');
+      console.error("Invalid selection range");
       return false;
     }
 
@@ -258,11 +270,15 @@ export function applyFontSize(fontSize: number): boolean {
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log('Is multi-line selection for font size:', isMultiLine);
+    console.log("Is multi-line selection for font size:", isMultiLine);
 
     // Use our improved multi-line handler for all selections
     // This will try multiple approaches in order of reliability
-    const result = applyStyleToMultiLineSelection(currentRange, 'fontSize', `${fontSize}px`);
+    const result = applyStyleToMultiLineSelection(
+      currentRange,
+      "fontSize",
+      `${fontSize}px`
+    );
 
     if (result) {
       // Save the selection again to preserve it for future operations
@@ -271,15 +287,15 @@ export function applyFontSize(fontSize: number): boolean {
     }
 
     // If all else fails, try the most basic approach
-    console.log('All methods failed, trying basic execCommand as last resort');
-    document.execCommand('styleWithCSS', false, 'true');
-    const basicResult = document.execCommand('fontSize', false, '7'); // 7 is the largest size
+    console.log("All methods failed, trying basic execCommand as last resort");
+    document.execCommand("styleWithCSS", false, "true");
+    const basicResult = document.execCommand("fontSize", false, "7"); // 7 is the largest size
 
     if (basicResult) {
       // Find all font elements with size 7 and replace with the actual size
       const fontElements = savedElement.querySelectorAll('font[size="7"]');
-      fontElements.forEach(font => {
-        const span = document.createElement('span');
+      fontElements.forEach((font) => {
+        const span = document.createElement("span");
         span.style.fontSize = `${fontSize}px`;
 
         // Move all children from the font element to the span
@@ -299,7 +315,7 @@ export function applyFontSize(fontSize: number): boolean {
       return true;
     }
 
-    console.error('Failed to apply font size');
+    console.error("Failed to apply font size");
     return false;
   } catch (error) {
     console.error(`Error applying font size:`, error);
@@ -312,7 +328,7 @@ export function applyFontSize(fontSize: number): boolean {
  */
 export function applyTextColor(color: string): boolean {
   if (!savedRange || !savedElement) {
-    console.error('Cannot apply text color: No saved selection');
+    console.error("Cannot apply text color: No saved selection");
     return false;
   }
 
@@ -333,7 +349,7 @@ export function applyTextColor(color: string): boolean {
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error('Invalid selection range');
+      console.error("Invalid selection range");
       return false;
     }
 
@@ -342,11 +358,11 @@ export function applyTextColor(color: string): boolean {
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log('Is multi-line selection for text color:', isMultiLine);
+    console.log("Is multi-line selection for text color:", isMultiLine);
 
     // Use our improved multi-line handler for all selections
     // This will try multiple approaches in order of reliability
-    const result = applyStyleToMultiLineSelection(currentRange, 'color', color);
+    const result = applyStyleToMultiLineSelection(currentRange, "color", color);
 
     if (result) {
       // Save the selection again to preserve it for future operations
@@ -355,9 +371,9 @@ export function applyTextColor(color: string): boolean {
     }
 
     // If all else fails, try the most basic approach
-    console.log('All methods failed, trying basic execCommand as last resort');
-    document.execCommand('styleWithCSS', false, 'true');
-    const basicResult = document.execCommand('foreColor', false, color);
+    console.log("All methods failed, trying basic execCommand as last resort");
+    document.execCommand("styleWithCSS", false, "true");
+    const basicResult = document.execCommand("foreColor", false, color);
 
     if (basicResult) {
       console.log(`Applied text color: ${color} using basic execCommand`);
@@ -366,7 +382,7 @@ export function applyTextColor(color: string): boolean {
       return true;
     }
 
-    console.error('Failed to apply text color');
+    console.error("Failed to apply text color");
     return false;
   } catch (error) {
     console.error(`Error applying text color:`, error);
@@ -379,7 +395,7 @@ export function applyTextColor(color: string): boolean {
  */
 export function applyBackgroundColor(color: string): boolean {
   if (!savedRange || !savedElement) {
-    console.error('Cannot apply background color: No saved selection');
+    console.error("Cannot apply background color: No saved selection");
     return false;
   }
 
@@ -400,7 +416,7 @@ export function applyBackgroundColor(color: string): boolean {
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error('Invalid selection range');
+      console.error("Invalid selection range");
       return false;
     }
 
@@ -409,11 +425,15 @@ export function applyBackgroundColor(color: string): boolean {
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log('Is multi-line selection for background color:', isMultiLine);
+    console.log("Is multi-line selection for background color:", isMultiLine);
 
     // Use our improved multi-line handler for all selections
     // This will try multiple approaches in order of reliability
-    const result = applyStyleToMultiLineSelection(currentRange, 'backgroundColor', color);
+    const result = applyStyleToMultiLineSelection(
+      currentRange,
+      "backgroundColor",
+      color
+    );
 
     if (result) {
       // Save the selection again to preserve it for future operations
@@ -422,9 +442,9 @@ export function applyBackgroundColor(color: string): boolean {
     }
 
     // If all else fails, try the most basic approach
-    console.log('All methods failed, trying basic execCommand as last resort');
-    document.execCommand('styleWithCSS', false, 'true');
-    const basicResult = document.execCommand('backColor', false, color);
+    console.log("All methods failed, trying basic execCommand as last resort");
+    document.execCommand("styleWithCSS", false, "true");
+    const basicResult = document.execCommand("backColor", false, color);
 
     if (basicResult) {
       console.log(`Applied background color: ${color} using basic execCommand`);
@@ -433,7 +453,7 @@ export function applyBackgroundColor(color: string): boolean {
       return true;
     }
 
-    console.error('Failed to apply background color');
+    console.error("Failed to apply background color");
     return false;
   } catch (error) {
     console.error(`Error applying background color:`, error);
@@ -444,9 +464,12 @@ export function applyBackgroundColor(color: string): boolean {
 /**
  * Apply both text color and background color to the saved selection at once
  */
-export function applyTextAndBackgroundColor(textColor: string, backgroundColor: string): boolean {
+export function applyTextAndBackgroundColor(
+  textColor: string,
+  backgroundColor: string
+): boolean {
   if (!savedRange || !savedElement) {
-    console.error('Cannot apply colors: No saved selection');
+    console.error("Cannot apply colors: No saved selection");
     return false;
   }
 
@@ -467,7 +490,7 @@ export function applyTextAndBackgroundColor(textColor: string, backgroundColor: 
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error('Invalid selection range');
+      console.error("Invalid selection range");
       return false;
     }
 
@@ -476,7 +499,7 @@ export function applyTextAndBackgroundColor(textColor: string, backgroundColor: 
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log('Is multi-line selection for combined colors:', isMultiLine);
+    console.log("Is multi-line selection for combined colors:", isMultiLine);
 
     // Try to apply both styles at once using a single span
     try {
@@ -484,7 +507,7 @@ export function applyTextAndBackgroundColor(textColor: string, backgroundColor: 
       const clonedRange = currentRange.cloneRange();
 
       // Create a span with both styles
-      const span = document.createElement('span');
+      const span = document.createElement("span");
       span.style.color = textColor;
       span.style.backgroundColor = backgroundColor;
 
@@ -506,7 +529,10 @@ export function applyTextAndBackgroundColor(textColor: string, backgroundColor: 
         console.log(`Applied both colors using surroundContents`);
         return true;
       } catch (error) {
-        console.error('surroundContents failed for combined colors, trying separate applications:', error);
+        console.error(
+          "surroundContents failed for combined colors, trying separate applications:",
+          error
+        );
 
         // If surroundContents fails, apply colors separately
         // First apply text color
@@ -521,10 +547,10 @@ export function applyTextAndBackgroundColor(textColor: string, backgroundColor: 
         return false;
       }
     } catch (error) {
-      console.error('Error applying combined colors:', error);
+      console.error("Error applying combined colors:", error);
 
       // If all else fails, try applying colors separately
-      console.log('Trying to apply colors separately as fallback');
+      console.log("Trying to apply colors separately as fallback");
 
       // First apply text color
       const textColorSuccess = applyTextColor(textColor);
@@ -546,8 +572,12 @@ export function applyTextAndBackgroundColor(textColor: string, backgroundColor: 
 /**
  * Apply text alignment to the saved selection
  */
-export function applyTextAlignment(alignment: 'left' | 'center' | 'right' | 'justify'): boolean {
-  const command = `justify${alignment.charAt(0).toUpperCase()}${alignment.slice(1)}`;
+export function applyTextAlignment(
+  alignment: "left" | "center" | "right" | "justify"
+): boolean {
+  const command = `justify${alignment.charAt(0).toUpperCase()}${alignment.slice(
+    1
+  )}`;
   return applyFormatting(command);
 }
 
@@ -557,10 +587,12 @@ export function isInputActive(): boolean {
   if (!activeElement) return false;
 
   const tagName = activeElement.tagName.toLowerCase();
-  return tagName === 'input' ||
-         tagName === 'textarea' ||
-         tagName === 'select' ||
-         activeElement.hasAttribute('contenteditable');
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    activeElement.hasAttribute("contenteditable")
+  );
 }
 
 /**
@@ -572,9 +604,10 @@ export function isMultiLineSelection(range: Range): boolean {
     const container = range.commonAncestorContainer;
 
     // If the container is a text node, we need to check its parent
-    const parentElement = container.nodeType === Node.TEXT_NODE
-      ? container.parentElement
-      : container as HTMLElement;
+    const parentElement =
+      container.nodeType === Node.TEXT_NODE
+        ? container.parentElement
+        : (container as HTMLElement);
 
     if (!parentElement) return false;
 
@@ -582,17 +615,20 @@ export function isMultiLineSelection(range: Range): boolean {
     const text = range.toString();
 
     // Check if the selection text contains newlines
-    const containsNewlines = text.includes('\n');
+    const containsNewlines = text.includes("\n");
 
     // Check if the selection contains any block-level elements or line breaks
     // First, clone the range contents to avoid modifying the original
     const fragment = range.cloneContents();
-    const tempDiv = document.createElement('div');
+    const tempDiv = document.createElement("div");
     tempDiv.appendChild(fragment);
 
     // Check for block elements and line breaks in the selection
-    const containsBlockElements = tempDiv.querySelector('div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table, tr, td, th') !== null;
-    const containsLineBreaks = tempDiv.querySelector('br') !== null;
+    const containsBlockElements =
+      tempDiv.querySelector(
+        "div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table, tr, td, th"
+      ) !== null;
+    const containsLineBreaks = tempDiv.querySelector("br") !== null;
 
     // Check if the selection spans multiple nodes
     const spansMultipleNodes = range.startContainer !== range.endContainer;
@@ -608,15 +644,15 @@ export function isMultiLineSelection(range: Range): boolean {
         {
           acceptNode: (node) => {
             // Only accept text nodes that are not empty
-            return node.textContent && node.textContent.trim() !== ''
+            return node.textContent && node.textContent.trim() !== ""
               ? NodeFilter.FILTER_ACCEPT
               : NodeFilter.FILTER_REJECT;
-          }
+          },
         }
       );
 
       let node;
-      while (node = walker.nextNode()) {
+      while ((node = walker.nextNode())) {
         textNodes.push(node);
       }
 
@@ -625,18 +661,29 @@ export function isMultiLineSelection(range: Range): boolean {
         const startNodeIndex = textNodes.indexOf(range.startContainer);
         const endNodeIndex = textNodes.indexOf(range.endContainer);
 
-        if (startNodeIndex !== -1 && endNodeIndex !== -1 && startNodeIndex !== endNodeIndex) {
+        if (
+          startNodeIndex !== -1 &&
+          endNodeIndex !== -1 &&
+          startNodeIndex !== endNodeIndex
+        ) {
           // Check if any nodes between start and end are in different paragraphs
           for (let i = startNodeIndex; i <= endNodeIndex; i++) {
             const node = textNodes[i];
-            const parentParagraph = node.parentElement?.closest('p, div, li, td, th, h1, h2, h3, h4, h5, h6');
+            const parentParagraph = node.parentElement?.closest(
+              "p, div, li, td, th, h1, h2, h3, h4, h5, h6"
+            );
 
             if (parentParagraph) {
               for (let j = i + 1; j <= endNodeIndex; j++) {
                 const otherNode = textNodes[j];
-                const otherParentParagraph = otherNode.parentElement?.closest('p, div, li, td, th, h1, h2, h3, h4, h5, h6');
+                const otherParentParagraph = otherNode.parentElement?.closest(
+                  "p, div, li, td, th, h1, h2, h3, h4, h5, h6"
+                );
 
-                if (otherParentParagraph && parentParagraph !== otherParentParagraph) {
+                if (
+                  otherParentParagraph &&
+                  parentParagraph !== otherParentParagraph
+                ) {
                   spansMultipleParagraphs = true;
                   break;
                 }
@@ -649,18 +696,23 @@ export function isMultiLineSelection(range: Range): boolean {
       }
     }
 
-    console.log('Selection analysis:', {
+    console.log("Selection analysis:", {
       containsNewlines,
       containsBlockElements,
       containsLineBreaks,
       spansMultipleNodes,
       spansMultipleParagraphs,
-      text: text.substring(0, 50) + (text.length > 50 ? '...' : '')
+      text: text.substring(0, 50) + (text.length > 50 ? "..." : ""),
     });
 
-    return containsNewlines || containsBlockElements || containsLineBreaks || spansMultipleParagraphs;
+    return (
+      containsNewlines ||
+      containsBlockElements ||
+      containsLineBreaks ||
+      spansMultipleParagraphs
+    );
   } catch (error) {
-    console.error('Error in isMultiLineSelection:', error);
+    console.error("Error in isMultiLineSelection:", error);
     // If there's an error, assume it's not a multi-line selection
     return false;
   }
@@ -669,10 +721,18 @@ export function isMultiLineSelection(range: Range): boolean {
 /**
  * Apply a style to a multi-line selection by processing each line separately
  */
-export function applyStyleToMultiLineSelection(range: Range, styleProperty: string, value: string): boolean {
+export function applyStyleToMultiLineSelection(
+  range: Range,
+  styleProperty: string,
+  value: string
+): boolean {
   try {
     // First, try using the document.execCommand approach (most reliable)
-    if (styleProperty === 'color' || styleProperty === 'backgroundColor' || styleProperty === 'fontSize') {
+    if (
+      styleProperty === "color" ||
+      styleProperty === "backgroundColor" ||
+      styleProperty === "fontSize"
+    ) {
       // Focus the element first to ensure we're working with the right context
       if (savedElement) {
         savedElement.focus();
@@ -682,31 +742,31 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
       let command: string;
       let commandValue: string = value;
 
-      if (styleProperty === 'color') {
-        command = 'foreColor';
-      } else if (styleProperty === 'backgroundColor') {
-        command = 'backColor';
-      } else if (styleProperty === 'fontSize') {
-        command = 'fontSize';
+      if (styleProperty === "color") {
+        command = "foreColor";
+      } else if (styleProperty === "backgroundColor") {
+        command = "backColor";
+      } else if (styleProperty === "fontSize") {
+        command = "fontSize";
         // For fontSize, we need to use a different approach
         // First apply a standard size (7) and then replace with actual size
-        commandValue = '7';
+        commandValue = "7";
       } else {
         command = styleProperty;
       }
 
       // Enable CSS styling
-      document.execCommand('styleWithCSS', false, 'true');
+      document.execCommand("styleWithCSS", false, "true");
 
       // Apply the command
       const result = document.execCommand(command, false, commandValue);
 
       // For fontSize, we need to replace the font elements with spans
-      if (result && styleProperty === 'fontSize' && savedElement) {
+      if (result && styleProperty === "fontSize" && savedElement) {
         // Find all font elements with size 7 and replace with the actual size
         const fontElements = savedElement.querySelectorAll('font[size="7"]');
-        fontElements.forEach(font => {
-          const span = document.createElement('span');
+        fontElements.forEach((font) => {
+          const span = document.createElement("span");
           span.style.fontSize = value;
 
           // Move all children from the font element to the span
@@ -722,7 +782,9 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
       }
 
       if (result) {
-        console.log(`Applied ${styleProperty}: ${value} to selection using execCommand`);
+        console.log(
+          `Applied ${styleProperty}: ${value} to selection using execCommand`
+        );
 
         // Save the selection again to preserve it for future operations
         saveSelection();
@@ -732,11 +794,13 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
     }
 
     // If execCommand fails, try the surroundContents approach
-    console.log(`execCommand failed, trying surroundContents for ${styleProperty}`);
+    console.log(
+      `execCommand failed, trying surroundContents for ${styleProperty}`
+    );
 
     try {
       // Create a span with the style
-      const span = document.createElement('span');
+      const span = document.createElement("span");
       span.style[styleProperty as any] = value;
 
       // Try to use surroundContents (works for simple selections)
@@ -756,10 +820,15 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
         savedRange = newRange.cloneRange();
       }
 
-      console.log(`Applied ${styleProperty}: ${value} to selection using surroundContents`);
+      console.log(
+        `Applied ${styleProperty}: ${value} to selection using surroundContents`
+      );
       return true;
     } catch (error) {
-      console.error('surroundContents failed, trying iterative approach:', error);
+      console.error(
+        "surroundContents failed, trying iterative approach:",
+        error
+      );
 
       // If surroundContents fails, use a more complex approach for multi-line selections
       // Clone the range to avoid modifying the original
@@ -767,7 +836,7 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
 
       // Get the selected content as HTML
       const fragment = clonedRange.cloneContents();
-      const tempDiv = document.createElement('div');
+      const tempDiv = document.createElement("div");
       tempDiv.appendChild(fragment);
 
       // Store the original content for backup
@@ -782,10 +851,10 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
           tempDiv.style[styleProperty as any] = value;
         } else {
           // Apply the style to each text node
-          textNodes.forEach(node => {
-            if (node.textContent && node.textContent.trim() !== '') {
+          textNodes.forEach((node) => {
+            if (node.textContent && node.textContent.trim() !== "") {
               // Create a span with the style
-              const span = document.createElement('span');
+              const span = document.createElement("span");
               span.style[styleProperty as any] = value;
               span.textContent = node.textContent;
 
@@ -823,10 +892,12 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
           savedRange = newRange.cloneRange();
         }
 
-        console.log(`Applied ${styleProperty}: ${value} to multi-line selection using iterative approach`);
+        console.log(
+          `Applied ${styleProperty}: ${value} to multi-line selection using iterative approach`
+        );
         return true;
       } catch (error) {
-        console.error('Error applying style to multi-line selection:', error);
+        console.error("Error applying style to multi-line selection:", error);
 
         // If all else fails, try a simpler approach as a last resort
         try {
@@ -834,7 +905,7 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
           range.deleteContents();
 
           // Create a span with the style
-          const span = document.createElement('span');
+          const span = document.createElement("span");
           span.style[styleProperty as any] = value;
           span.innerHTML = originalContent;
 
@@ -855,10 +926,12 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
             savedRange = newRange.cloneRange();
           }
 
-          console.log(`Applied ${styleProperty}: ${value} to selection using fallback approach`);
+          console.log(
+            `Applied ${styleProperty}: ${value} to selection using fallback approach`
+          );
           return true;
         } catch (finalError) {
-          console.error('All approaches failed:', finalError);
+          console.error("All approaches failed:", finalError);
           return false;
         }
       }
@@ -874,21 +947,17 @@ export function applyStyleToMultiLineSelection(range: Range, styleProperty: stri
  */
 function getAllTextNodes(container: Node): Node[] {
   const textNodes: Node[] = [];
-  const walker = document.createTreeWalker(
-    container,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        // Only accept text nodes that are not empty
-        return node.textContent && node.textContent.trim() !== ''
-          ? NodeFilter.FILTER_ACCEPT
-          : NodeFilter.FILTER_REJECT;
-      }
-    }
-  );
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      // Only accept text nodes that are not empty
+      return node.textContent && node.textContent.trim() !== ""
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
+    },
+  });
 
   let node;
-  while (node = walker.nextNode()) {
+  while ((node = walker.nextNode())) {
     textNodes.push(node);
   }
 
@@ -899,15 +968,19 @@ function getAllTextNodes(container: Node): Node[] {
  * Process all nodes in a container to apply a style
  * This is a more careful implementation that preserves the original DOM structure
  */
-function processNodesForStyling(container: Node, styleProperty: string, value: string): void {
+function processNodesForStyling(
+  container: Node,
+  styleProperty: string,
+  value: string
+): void {
   try {
     // Use a different approach based on the node type
     if (container.nodeType === Node.TEXT_NODE) {
       // For text nodes, wrap them in a span with the style only if they have content
-      if (container.textContent && container.textContent.trim() !== '') {
+      if (container.textContent && container.textContent.trim() !== "") {
         try {
           // Create a span with the style
-          const span = document.createElement('span');
+          const span = document.createElement("span");
           span.style[styleProperty as any] = value;
           span.textContent = container.textContent;
 
@@ -916,7 +989,7 @@ function processNodesForStyling(container: Node, styleProperty: string, value: s
             container.parentNode.replaceChild(span, container);
           }
         } catch (error) {
-          console.error('Error processing text node:', error);
+          console.error("Error processing text node:", error);
           // If there's an error, leave the node as is
         }
       }
@@ -926,8 +999,9 @@ function processNodesForStyling(container: Node, styleProperty: string, value: s
 
       try {
         // Check if this is a span or other inline element that we can apply style to directly
-        const isInlineElement = getComputedStyle(element).display === 'inline' ||
-                               element.tagName.toLowerCase() === 'span';
+        const isInlineElement =
+          getComputedStyle(element).display === "inline" ||
+          element.tagName.toLowerCase() === "span";
 
         if (isInlineElement) {
           // Apply the style directly to inline elements
@@ -943,7 +1017,7 @@ function processNodesForStyling(container: Node, styleProperty: string, value: s
           processNodesForStyling(childNode, styleProperty, value);
         }
       } catch (error) {
-        console.error('Error processing element node:', error);
+        console.error("Error processing element node:", error);
 
         // If there's an error with the element, try to process its children anyway
         try {
@@ -952,7 +1026,7 @@ function processNodesForStyling(container: Node, styleProperty: string, value: s
             processNodesForStyling(childNode, styleProperty, value);
           }
         } catch (childError) {
-          console.error('Error processing element children:', childError);
+          console.error("Error processing element children:", childError);
         }
       }
     } else if (container.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
@@ -963,7 +1037,7 @@ function processNodesForStyling(container: Node, styleProperty: string, value: s
       }
     }
   } catch (error) {
-    console.error('Error in processNodesForStyling:', error);
+    console.error("Error in processNodesForStyling:", error);
   }
 }
 
@@ -971,9 +1045,12 @@ function processNodesForStyling(container: Node, styleProperty: string, value: s
  * Apply a style directly to the selected text using a simpler approach
  * This is a fallback method when other approaches fail
  */
-export function applyStyleDirectly(styleProperty: string, value: string): boolean {
+export function applyStyleDirectly(
+  styleProperty: string,
+  value: string
+): boolean {
   if (!savedRange || !savedElement) {
-    console.error('Cannot apply style: No saved selection');
+    console.error("Cannot apply style: No saved selection");
     return false;
   }
 
@@ -994,12 +1071,12 @@ export function applyStyleDirectly(styleProperty: string, value: string): boolea
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error('Invalid selection range');
+      console.error("Invalid selection range");
       return false;
     }
 
     // Create a simple span with the style
-    const span = document.createElement('span');
+    const span = document.createElement("span");
     span.style[styleProperty as any] = value;
 
     // Use surroundContents which is more reliable than extractContents/insertNode
@@ -1018,26 +1095,31 @@ export function applyStyleDirectly(styleProperty: string, value: string): boolea
       // Update our saved range
       savedRange = newRange.cloneRange();
 
-      console.log(`Applied ${styleProperty}: ${value} to selection using direct method`);
+      console.log(
+        `Applied ${styleProperty}: ${value} to selection using direct method`
+      );
       return true;
     } catch (error) {
-      console.error('Error with surroundContents, falling back to execCommand:', error);
+      console.error(
+        "Error with surroundContents, falling back to execCommand:",
+        error
+      );
 
       // Try execCommand as a last resort
-      if (styleProperty === 'color') {
-        document.execCommand('foreColor', false, value);
+      if (styleProperty === "color") {
+        document.execCommand("foreColor", false, value);
         return true;
-      } else if (styleProperty === 'backgroundColor') {
-        document.execCommand('backColor', false, value);
+      } else if (styleProperty === "backgroundColor") {
+        document.execCommand("backColor", false, value);
         return true;
-      } else if (styleProperty === 'fontSize') {
+      } else if (styleProperty === "fontSize") {
         // For fontSize, we need to use a different approach
-        document.execCommand('fontSize', false, '7');
+        document.execCommand("fontSize", false, "7");
 
         // Find all font elements with size 7 and replace with the actual size
         const fontElements = savedElement.querySelectorAll('font[size="7"]');
-        fontElements.forEach(font => {
-          font.removeAttribute('size');
+        fontElements.forEach((font) => {
+          font.removeAttribute("size");
           font.style.fontSize = value;
         });
 
@@ -1056,7 +1138,10 @@ export function applyStyleDirectly(styleProperty: string, value: string): boolea
  * Apply a style to a text selection using the most direct and reliable approach
  * This is a simplified version that focuses on stability
  */
-export function directlyApplyStyle(styleProperty: string, value: string): boolean {
+export function directlyApplyStyle(
+  styleProperty: string,
+  value: string
+): boolean {
   if (!savedRange || !savedElement) {
     console.error(`Cannot apply ${styleProperty}: No saved selection`);
     return false;
@@ -1079,16 +1164,16 @@ export function directlyApplyStyle(styleProperty: string, value: string): boolea
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error('Invalid selection range');
+      console.error("Invalid selection range");
       return false;
     }
 
     // Use the most direct and reliable approach: document.execCommand
     // This is the browser's built-in way to format text and works in most cases
-    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand("styleWithCSS", false, "true");
 
     // Handle font size differently from other properties
-    if (styleProperty === 'fontSize') {
+    if (styleProperty === "fontSize") {
       // For font size, we'll use a direct span approach instead of execCommand
       console.log(`Applying fontSize: ${value} using direct span approach`);
 
@@ -1102,7 +1187,7 @@ export function directlyApplyStyle(styleProperty: string, value: string): boolea
 
         // Check if this is a multi-line selection
         const isMultiLine = isMultiLineSelection(range);
-        console.log('Is multi-line selection for font size:', isMultiLine);
+        console.log("Is multi-line selection for font size:", isMultiLine);
 
         if (isMultiLine) {
           // For multi-line selections, we need a different approach
@@ -1114,7 +1199,7 @@ export function directlyApplyStyle(styleProperty: string, value: string): boolea
         const fragment = range.extractContents();
 
         // Create a span with the specified font size
-        const span = document.createElement('span');
+        const span = document.createElement("span");
         span.style.fontSize = value;
 
         // Add the fragment to the span
@@ -1137,20 +1222,23 @@ export function directlyApplyStyle(styleProperty: string, value: string): boolea
         console.log(`Applied fontSize: ${value} using direct span approach`);
         return true;
       } catch (error) {
-        console.error('Error applying font size with direct span approach:', error);
+        console.error(
+          "Error applying font size with direct span approach:",
+          error
+        );
 
         // Fall back to execCommand as a last resort
         try {
-          document.execCommand('styleWithCSS', false, 'true');
-          document.execCommand('fontSize', false, '7');
+          document.execCommand("styleWithCSS", false, "true");
+          document.execCommand("fontSize", false, "7");
 
           // Find all font elements with size 7 and replace with the actual size
           const fontElements = savedElement.querySelectorAll('font[size="7"]');
           console.log(`Found ${fontElements.length} font elements to update`);
 
-          fontElements.forEach(font => {
+          fontElements.forEach((font) => {
             // Create a span with the specified font size
-            const span = document.createElement('span');
+            const span = document.createElement("span");
             span.style.fontSize = value;
 
             // Move all children from the font element to the span
@@ -1166,26 +1254,109 @@ export function directlyApplyStyle(styleProperty: string, value: string): boolea
 
           return true;
         } catch (fallbackError) {
-          console.error('Error applying font size with fallback approach:', fallbackError);
+          console.error(
+            "Error applying font size with fallback approach:",
+            fallbackError
+          );
           return false;
         }
       }
     }
 
+    // Handle heading style
+    if (styleProperty === "heading") {
+      console.log(`Applying heading level ${value} using direct approach`);
+
+      try {
+        // Get the current selection
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return false;
+
+        // Get the current range
+        const range = selection.getRangeAt(0);
+
+        // Extract the selected content
+        const fragment = range.extractContents();
+
+        // Create the appropriate heading element (h1, h2, etc.)
+        const headingLevel = parseInt(value);
+        if (isNaN(headingLevel) || headingLevel < 1 || headingLevel > 6) {
+          console.error("Invalid heading level:", value);
+          return false;
+        }
+
+        // Create the heading element
+        const headingTag = `h${headingLevel}`;
+        const headingElement = document.createElement(headingTag);
+
+        // Set appropriate styles based on heading level
+        switch (headingLevel) {
+          case 1: // H1
+            headingElement.style.fontSize = "32px";
+            headingElement.style.fontWeight = "bold";
+            headingElement.style.marginBottom = "16px";
+            headingElement.style.color = "#333";
+            break;
+          case 2: // H2
+            headingElement.style.fontSize = "28px";
+            headingElement.style.fontWeight = "bold";
+            headingElement.style.marginBottom = "14px";
+            headingElement.style.color = "#444";
+            break;
+          case 3: // H3
+            headingElement.style.fontSize = "24px";
+            headingElement.style.fontWeight = "bold";
+            headingElement.style.marginBottom = "12px";
+            headingElement.style.color = "#555";
+            break;
+          default: // H4-H6
+            headingElement.style.fontSize = 28 - headingLevel * 2 + "px";
+            headingElement.style.fontWeight = "bold";
+            headingElement.style.marginBottom = "10px";
+            break;
+        }
+
+        // Add the fragment to the heading element
+        headingElement.appendChild(fragment);
+
+        // Insert the heading element at the current position
+        range.insertNode(headingElement);
+
+        // Create a new range that selects the heading content
+        const newRange = document.createRange();
+        newRange.selectNodeContents(headingElement);
+
+        // Update the selection
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+
+        // Update our saved range
+        savedRange = newRange.cloneRange();
+
+        console.log(`Applied heading level ${value} using direct approach`);
+        return true;
+      } catch (error) {
+        console.error("Error applying heading with direct approach:", error);
+        return false;
+      }
+    }
+
     // For other properties, use execCommand
-    let command = '';
+    let command = "";
     let commandValue = value;
 
-    if (styleProperty === 'color') {
-      command = 'foreColor';
-    } else if (styleProperty === 'backgroundColor') {
-      command = 'backColor';
+    if (styleProperty === "color") {
+      command = "foreColor";
+    } else if (styleProperty === "backgroundColor") {
+      command = "backColor";
     } else {
       // For other properties, try to use the property name directly
       command = styleProperty;
     }
 
-    console.log(`Applying ${styleProperty} with value ${value} using execCommand ${command}`);
+    console.log(
+      `Applying ${styleProperty} with value ${value} using execCommand ${command}`
+    );
     const result = document.execCommand(command, false, commandValue);
 
     // Save the selection again to preserve it for future operations
@@ -1203,9 +1374,12 @@ export function directlyApplyStyle(styleProperty: string, value: string): boolea
  * Apply font size to a multi-line selection
  * This function handles the special case of multi-line selections for font size
  */
-function applyFontSizeToMultiLineSelection(range: Range, fontSize: string): boolean {
+function applyFontSizeToMultiLineSelection(
+  range: Range,
+  fontSize: string
+): boolean {
   try {
-    console.log('Applying font size to multi-line selection:', fontSize);
+    console.log("Applying font size to multi-line selection:", fontSize);
 
     // Clone the range to avoid modifying the original
     const clonedRange = range.cloneRange();
@@ -1214,7 +1388,7 @@ function applyFontSizeToMultiLineSelection(range: Range, fontSize: string): bool
     const fragment = clonedRange.cloneContents();
 
     // Create a temporary div to hold the content
-    const tempDiv = document.createElement('div');
+    const tempDiv = document.createElement("div");
     tempDiv.appendChild(fragment);
 
     // Find all text nodes in the selection
@@ -1222,10 +1396,10 @@ function applyFontSizeToMultiLineSelection(range: Range, fontSize: string): bool
     console.log(`Found ${textNodes.length} text nodes in multi-line selection`);
 
     // Apply font size to each text node
-    textNodes.forEach(node => {
-      if (node.textContent && node.textContent.trim() !== '') {
+    textNodes.forEach((node) => {
+      if (node.textContent && node.textContent.trim() !== "") {
         // Create a span with the specified font size
-        const span = document.createElement('span');
+        const span = document.createElement("span");
         span.style.fontSize = fontSize;
         span.textContent = node.textContent;
 
@@ -1260,10 +1434,10 @@ function applyFontSizeToMultiLineSelection(range: Range, fontSize: string): bool
       savedRange = newRange.cloneRange();
     }
 
-    console.log('Successfully applied font size to multi-line selection');
+    console.log("Successfully applied font size to multi-line selection");
     return true;
   } catch (error) {
-    console.error('Error applying font size to multi-line selection:', error);
+    console.error("Error applying font size to multi-line selection:", error);
     return false;
   }
 }
@@ -1273,21 +1447,17 @@ function applyFontSizeToMultiLineSelection(range: Range, fontSize: string): bool
  */
 function getAllTextNodesInElement(element: Node): Node[] {
   const textNodes: Node[] = [];
-  const walker = document.createTreeWalker(
-    element,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        // Only accept text nodes that are not empty
-        return node.textContent && node.textContent.trim() !== ''
-          ? NodeFilter.FILTER_ACCEPT
-          : NodeFilter.FILTER_REJECT;
-      }
-    }
-  );
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      // Only accept text nodes that are not empty
+      return node.textContent && node.textContent.trim() !== ""
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
+    },
+  });
 
   let node;
-  while (node = walker.nextNode()) {
+  while ((node = walker.nextNode())) {
     textNodes.push(node);
   }
 
@@ -1296,7 +1466,7 @@ function getAllTextNodesInElement(element: Node): Node[] {
 
 // Set up global event listeners to track selection
 export function initSelectionTracking(): void {
-  document.addEventListener('selectionchange', () => {
+  document.addEventListener("selectionchange", () => {
     // Don't interfere with input fields
     if (isInputActive()) return;
 
@@ -1309,7 +1479,7 @@ export function initSelectionTracking(): void {
     saveSelection();
   });
 
-  document.addEventListener('mouseup', () => {
+  document.addEventListener("mouseup", () => {
     // Don't interfere with input fields
     if (isInputActive()) return;
 
@@ -1322,18 +1492,19 @@ export function initSelectionTracking(): void {
     saveSelection();
   });
 
-  document.addEventListener('keyup', (event) => {
+  document.addEventListener("keyup", (event) => {
     // Don't interfere with input fields
     if (isInputActive()) return;
 
     // Only track selection changes for navigation keys
-    if (event.key.includes('Arrow') ||
-        event.key === 'Home' ||
-        event.key === 'End' ||
-        event.key === 'PageUp' ||
-        event.key === 'PageDown' ||
-        event.key === 'Shift') {
-
+    if (
+      event.key.includes("Arrow") ||
+      event.key === "Home" ||
+      event.key === "End" ||
+      event.key === "PageUp" ||
+      event.key === "PageDown" ||
+      event.key === "Shift"
+    ) {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
         return;

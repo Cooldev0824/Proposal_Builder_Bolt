@@ -701,6 +701,70 @@ function applyStyleToSelectedText(
       emit("update:element", fontSizeUpdatedElement);
       console.log("Font size applied successfully with span");
       return true;
+    case "heading":
+      // Special handling for headings
+      console.log("Applying heading:", value);
+
+      // Create the appropriate heading element
+      const headingLevel = parseInt(value as string);
+      if (isNaN(headingLevel) || headingLevel < 1 || headingLevel > 6) {
+        console.error("Invalid heading level:", value);
+        return false;
+      }
+
+      // Create the heading element (h1, h2, etc.)
+      const headingTag = `h${headingLevel}`;
+      const headingElement = document.createElement(headingTag);
+
+      // Set appropriate styles based on heading level
+      switch (headingLevel) {
+        case 1: // H1
+          headingElement.style.fontSize = "32px";
+          headingElement.style.fontWeight = "bold";
+          headingElement.style.marginBottom = "16px";
+          headingElement.style.color = "#333";
+          break;
+        case 2: // H2
+          headingElement.style.fontSize = "28px";
+          headingElement.style.fontWeight = "bold";
+          headingElement.style.marginBottom = "14px";
+          headingElement.style.color = "#444";
+          break;
+        case 3: // H3
+          headingElement.style.fontSize = "24px";
+          headingElement.style.fontWeight = "bold";
+          headingElement.style.marginBottom = "12px";
+          headingElement.style.color = "#555";
+          break;
+        default: // H4-H6
+          headingElement.style.fontSize = 28 - headingLevel * 2 + "px";
+          headingElement.style.fontWeight = "bold";
+          headingElement.style.marginBottom = "10px";
+          break;
+      }
+
+      // Extract the selected content
+      const headingFragment = range.extractContents();
+      headingElement.appendChild(headingFragment);
+
+      // Insert the heading element
+      range.insertNode(headingElement);
+
+      // Update selection to include the new heading
+      selection.removeAllRanges();
+      const headingRange = document.createRange();
+      headingRange.selectNodeContents(headingElement);
+      selection.addRange(headingRange);
+
+      // Update the element content
+      const headingUpdatedElement = {
+        ...props.element,
+        content: contentElement.value.innerHTML,
+      };
+
+      emit("update:element", headingUpdatedElement);
+      console.log(`Heading ${headingLevel} applied successfully`);
+      return true;
     case "foreColor":
       command = "foreColor";
       break;
@@ -1055,6 +1119,60 @@ onBeforeUnmount(() => {
       display: inline;
       vertical-align: baseline;
       line-height: normal;
+    }
+
+    /* Style heading elements */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0;
+      padding: 0;
+      display: block;
+      line-height: 1.2;
+      font-family: inherit;
+    }
+
+    /* Specific heading styles */
+    h1 {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: #333;
+    }
+
+    h2 {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 14px;
+      color: #444;
+    }
+
+    h3 {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #555;
+    }
+
+    h4 {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    h5 {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    h6 {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 6px;
     }
 
     /* Handle zero-width spaces used for cursor positioning */
