@@ -102,13 +102,21 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDocumentStore } from "../stores/documentStore";
+import { Document } from "../types/document";
+
+interface DocumentDisplay {
+  id: string;
+  title: string;
+  lastEdited: string;
+  thumbnail: string;
+}
 
 const router = useRouter();
 const documentStore = useDocumentStore();
-const recentDocuments = ref([]);
+const recentDocuments = ref<DocumentDisplay[]>([]);
 const isLoading = ref(true);
 const deleteDialog = ref(false);
-const documentToDelete = ref(null);
+const documentToDelete = ref<string | null>(null);
 
 // Load documents when component mounts
 onMounted(async () => {
@@ -132,7 +140,7 @@ onMounted(async () => {
 });
 
 // Format date for display
-function formatDate(dateString) {
+function formatDate(dateString: string | undefined): string {
   if (!dateString) return "Unknown date";
 
   const date = new Date(dateString);
@@ -165,7 +173,7 @@ function formatDate(dateString) {
 }
 
 // Get a thumbnail for the document (placeholder for now)
-function getDocumentThumbnail(doc) {
+function getDocumentThumbnail(doc: any): string {
   // In a real app, you might generate thumbnails from the document content
   // For now, use placeholder images
   const placeholders = [
@@ -174,7 +182,26 @@ function getDocumentThumbnail(doc) {
     "https://images.pexels.com/photos/1779487/pexels-photo-1779487.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
   ];
 
-  // Use document ID to consistently select the same image for the same document
+  // Check if the document has a thumbnail image in its sections
+  if (doc.sections && doc.sections.length > 0) {
+    for (const section of doc.sections) {
+      if (section.elements && section.elements.length > 0) {
+        // Look for the first image element to use as thumbnail
+        const imageElement = section.elements.find(
+          (el: any) => el.type === "image" && el.content
+        );
+        if (imageElement && imageElement.content) {
+          // If the image path is from our server, prepend the API URL
+          if (imageElement.content.startsWith("/images/")) {
+            return `http://localhost:3000${imageElement.content}`;
+          }
+          return imageElement.content;
+        }
+      }
+    }
+  }
+
+  // If no image found, use a placeholder based on document ID
   const index = parseInt(doc.id.replace(/\D/g, "")) % placeholders.length;
   return placeholders[index] || placeholders[0];
 }

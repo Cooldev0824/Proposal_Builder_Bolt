@@ -23,6 +23,7 @@
     "@tiptap/vue-3": "^2.1.12",
     "ag-grid-community": "^31.1.1",
     "ag-grid-vue3": "^31.1.1",
+    "axios": "^1.9.0",
     "fabric": "^5.3.0",
     "gridstack": "^8.4.0",
     "html2canvas": "^1.4.1",

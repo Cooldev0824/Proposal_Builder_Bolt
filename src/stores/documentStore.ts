@@ -1,67 +1,32 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { Document } from "../types/document";
+import axios from "axios";
 
-// Storage key for documents in localStorage
-const STORAGE_KEY = "document-editor-documents";
+// API base URL - change this to match your server
+const API_URL = "http://localhost:3000/api";
 
 export const useDocumentStore = defineStore("documents", () => {
   const documents = ref<Document[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
-  // Load documents from localStorage
+  // Load documents from the server
   async function loadDocuments() {
     isLoading.value = true;
     error.value = null;
 
     try {
-      // Get documents from localStorage
-      const storedDocuments = localStorage.getItem(STORAGE_KEY);
-
-      if (storedDocuments) {
-        documents.value = JSON.parse(storedDocuments);
-        console.log(
-          "Loaded documents from localStorage:",
-          documents.value.length
-        );
-      } else {
-        // Initialize with sample documents if storage is empty
-        documents.value = [
-          {
-            id: "1",
-            title: "Business Proposal",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            sections: [
-              {
-                id: "cover",
-                title: "Cover",
-                elements: [],
-              },
-              {
-                id: "introduction",
-                title: "Introduction",
-                elements: [],
-              },
-            ],
-          },
-          {
-            id: "2",
-            title: "Marketing Plan",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            sections: [],
-          },
-        ];
-
-        // Save initial documents to localStorage
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(documents.value));
-        console.log("Initialized localStorage with sample documents");
-      }
+      // Get documents from the server
+      const response = await axios.get(`${API_URL}/documents`);
+      documents.value = response.data;
+      console.log("Loaded documents from server:", documents.value.length);
     } catch (err) {
-      error.value = "Failed to load documents from localStorage";
+      error.value = "Failed to load documents from server";
       console.error("Error loading documents:", err);
+
+      // Initialize with empty array if server request fails
+      documents.value = [];
     } finally {
       isLoading.value = false;
     }
@@ -69,13 +34,22 @@ export const useDocumentStore = defineStore("documents", () => {
 
   // Get a specific document by ID
   async function getDocument(id: string): Promise<Document | undefined> {
-    if (documents.value.length === 0) {
-      await loadDocuments();
-    }
+    isLoading.value = true;
+    error.value = null;
 
-    const document = documents.value.find((doc) => doc.id === id);
-    console.log(`Retrieved document ${id}:`, document ? "found" : "not found");
-    return document;
+    try {
+      // Get document from the server
+      const response = await axios.get(`${API_URL}/documents/${id}`);
+      const document = response.data;
+      console.log(`Retrieved document ${id} from server`);
+      return document;
+    } catch (err) {
+      error.value = `Failed to get document ${id} from server`;
+      console.error(`Error getting document ${id}:`, err);
+      return undefined;
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   // Save a document (create or update)
@@ -84,46 +58,26 @@ export const useDocumentStore = defineStore("documents", () => {
     error.value = null;
 
     try {
-      // Add a small delay to simulate API call (can be removed in production)
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Save document to the server
+      const response = await axios.post(`${API_URL}/documents`, document);
+      const savedDocument = response.data;
 
-      // Ensure document has required fields
-      const updatedDocument = {
-        ...document,
-        updatedAt: new Date().toISOString(),
-      };
-
-      const index = documents.value.findIndex((doc) => doc.id === document.id);
-
+      // Update local cache
+      const index = documents.value.findIndex(
+        (doc) => doc.id === savedDocument.id
+      );
       if (index >= 0) {
-        // Update existing document
-        console.log(`Updating existing document: ${document.id}`);
-        documents.value[index] = updatedDocument;
+        // Update existing document in cache
+        documents.value[index] = savedDocument;
       } else {
-        // Add new document with a proper ID
-        if (document.id.startsWith("new-doc-")) {
-          updatedDocument.id = `doc-${Date.now()}`;
-          console.log(`Generated new ID for document: ${updatedDocument.id}`);
-        }
-
-        // Set creation date for new documents
-        updatedDocument.createdAt =
-          updatedDocument.createdAt || updatedDocument.updatedAt;
-
-        console.log(`Adding new document: ${updatedDocument.id}`);
-        documents.value.push(updatedDocument);
+        // Add new document to cache
+        documents.value.push(savedDocument);
       }
 
-      // Save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(documents.value));
-      console.log(
-        "Saved documents to localStorage, count:",
-        documents.value.length
-      );
-
-      return updatedDocument;
+      console.log(`Document saved to server: ${savedDocument.id}`);
+      return savedDocument;
     } catch (err) {
-      error.value = "Failed to save document to localStorage";
+      error.value = "Failed to save document to server";
       console.error("Error saving document:", err);
       throw err;
     } finally {
@@ -137,27 +91,17 @@ export const useDocumentStore = defineStore("documents", () => {
     error.value = null;
 
     try {
-      // Add a small delay to simulate API call (can be removed in production)
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Delete document from the server
+      await axios.delete(`${API_URL}/documents/${id}`);
 
-      const initialCount = documents.value.length;
+      // Update local cache
       documents.value = documents.value.filter((doc) => doc.id !== id);
 
-      if (documents.value.length < initialCount) {
-        // Save updated list to localStorage
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(documents.value));
-        console.log(
-          `Deleted document ${id}, new count:`,
-          documents.value.length
-        );
-        return true;
-      } else {
-        console.log(`Document ${id} not found for deletion`);
-        return false;
-      }
+      console.log(`Deleted document ${id} from server`);
+      return true;
     } catch (err) {
-      error.value = "Failed to delete document from localStorage";
-      console.error("Error deleting document:", err);
+      error.value = `Failed to delete document ${id} from server`;
+      console.error(`Error deleting document ${id}:`, err);
       throw err;
     } finally {
       isLoading.value = false;
@@ -165,8 +109,10 @@ export const useDocumentStore = defineStore("documents", () => {
   }
 
   // Export all documents (for backup)
-  function exportDocuments(): string {
+  async function exportDocuments(): Promise<string> {
     try {
+      // Load all documents first to ensure we have the latest data
+      await loadDocuments();
       return JSON.stringify(documents.value);
     } catch (err) {
       console.error("Error exporting documents:", err);
@@ -176,15 +122,16 @@ export const useDocumentStore = defineStore("documents", () => {
   }
 
   // Import documents from JSON string (for restore)
-  function importDocuments(jsonData: string): boolean {
+  async function importDocuments(jsonData: string): Promise<boolean> {
     try {
       const importedDocs = JSON.parse(jsonData) as Document[];
-      documents.value = importedDocs;
-      localStorage.setItem(STORAGE_KEY, jsonData);
-      console.log(
-        "Imported documents to localStorage, count:",
-        importedDocs.length
-      );
+
+      // Save each document to the server
+      for (const doc of importedDocs) {
+        await saveDocument(doc);
+      }
+
+      console.log(`Imported ${importedDocs.length} documents to server`);
       return true;
     } catch (err) {
       console.error("Error importing documents:", err);
@@ -194,11 +141,17 @@ export const useDocumentStore = defineStore("documents", () => {
   }
 
   // Clear all documents from storage
-  function clearDocuments(): boolean {
+  async function clearDocuments(): Promise<boolean> {
     try {
+      // Delete each document from the server
+      for (const doc of documents.value) {
+        await deleteDocument(doc.id);
+      }
+
+      // Clear local cache
       documents.value = [];
-      localStorage.removeItem(STORAGE_KEY);
-      console.log("Cleared all documents from localStorage");
+
+      console.log("Cleared all documents from server");
       return true;
     } catch (err) {
       console.error("Error clearing documents:", err);
