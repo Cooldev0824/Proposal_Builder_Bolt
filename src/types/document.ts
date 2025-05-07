@@ -1,110 +1,112 @@
 export interface Document {
-  id: string
-  title: string
-  sections: Section[]
-  createdAt?: string
-  updatedAt?: string
+  id: string;
+  title: string;
+  sections: Section[];
+  createdAt?: string;
+  updatedAt?: string;
+  paperSize?: string;
+  orientation?: "portrait" | "landscape";
 }
 
 export interface Section {
-  id: string
-  title: string
-  elements: DocumentElement[]
+  id: string;
+  title: string;
+  elements: DocumentElement[];
 }
 
 export interface Position {
-  x: number
-  y: number
+  x: number;
+  y: number;
 }
 
 export interface Size {
-  width: number
-  height: number
+  width: number;
+  height: number;
 }
 
 export type DocumentElement = {
-  id: string
-  type: string
-  content: any
-  position: Position
-  size: Size
-  style?: any
-  zIndex?: number
-}
+  id: string;
+  type: string;
+  content: any;
+  position: Position;
+  size: Size;
+  style?: any;
+  zIndex?: number;
+};
 
 export interface TextElement extends DocumentElement {
-  type: 'text'
-  content: string
+  type: "text";
+  content: string;
   style: {
-    fontFamily: string
-    fontSize: number
-    fontWeight: string
-    color: string
-    backgroundColor: string
-    textAlign?: 'left' | 'center' | 'right' | 'justify'
-  }
+    fontFamily: string;
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+    backgroundColor: string;
+    textAlign?: "left" | "center" | "right" | "justify";
+  };
 }
 
 export interface ImageElement extends DocumentElement {
-  type: 'image'
-  content: string // URL
+  type: "image";
+  content: string; // URL
   style: {
-    borderRadius: number
-    borderWidth: number
-    borderColor: string
-    opacity: number
-  }
+    borderRadius: number;
+    borderWidth: number;
+    borderColor: string;
+    opacity: number;
+  };
 }
 
 export interface ShapeElement extends DocumentElement {
-  type: 'shape'
-  content: 'rectangle' | 'circle' | 'triangle' | 'arrow'
+  type: "shape";
+  content: "rectangle" | "circle" | "triangle" | "arrow";
   style: {
-    fill: string
-    stroke: string
-    strokeWidth: number
-    opacity: number
-  }
+    fill: string;
+    stroke: string;
+    strokeWidth: number;
+    opacity: number;
+  };
 }
 
 export interface TableElement extends DocumentElement {
-  type: 'table'
+  type: "table";
   content: {
-    headers: string[]
-    rows: string[][]
-  }
+    headers: string[];
+    rows: string[][];
+  };
   style: {
-    headerBackgroundColor: string
-    headerTextColor: string
-    cellBackgroundColor: string
-    cellTextColor: string
-    borderColor: string
-  }
+    headerBackgroundColor: string;
+    headerTextColor: string;
+    cellBackgroundColor: string;
+    cellTextColor: string;
+    borderColor: string;
+  };
 }
 
 export interface SignatureElement extends DocumentElement {
-  type: 'signature'
-  content: string // SVG data or empty
+  type: "signature";
+  content: string; // SVG data or empty
   style: {
-    borderBottom: string
-    label: string
-  }
+    borderBottom: string;
+    label: string;
+  };
 }
 
 export interface GridElement extends DocumentElement {
-  type: 'grid'
+  type: "grid";
   content: {
-    cells: GridCell[]
-  }
+    cells: GridCell[];
+  };
   style: {
-    backgroundColor: string
-    borderColor: string
-    gap: number
-  }
+    backgroundColor: string;
+    borderColor: string;
+    gap: number;
+  };
 }
 
 export interface GridCell {
-  id: string
-  elements: DocumentElement[]
-  size: number
+  id: string;
+  elements: DocumentElement[];
+  size: number;
 }

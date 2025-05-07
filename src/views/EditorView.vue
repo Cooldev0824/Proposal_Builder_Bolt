@@ -8,6 +8,8 @@
       :saveError="saveError"
       :saveMessage="saveMessage"
       :documentTitle="document.title"
+      :paperSize="document.paperSize"
+      :orientation="document.orientation"
       @tool-clicked="handleToolClick"
       @save="saveDocument"
       @navigate-to-dashboard="navigateToDashboard"
@@ -45,6 +47,8 @@
             :showGrid="showGrid"
             :isDrawing="isDrawing && currentSection === index"
             :drawingRectStyle="drawingRectangleStyle"
+            :paperSize="document.paperSize"
+            :orientation="document.orientation"
             @element-selected="selectElement"
             @element-updated="updateElement"
             @move-element-up="moveElementUp"
@@ -160,6 +164,8 @@ const document = reactive<Document>({
   id: documentId || "new-doc-" + Date.now(),
   title: "Untitled Document",
   sections: [],
+  paperSize: "Letter", // Default paper size
+  orientation: "portrait", // Default orientation
 });
 
 const currentSection = ref(0);
@@ -535,6 +541,18 @@ function handleToolClick(tool: string, value?: any) {
 
     case "zoom-out":
       zoom.value = Math.max(0.5, zoom.value - 0.1);
+      break;
+
+    case "paper-size":
+      // Update the document's paper size
+      document.paperSize = value;
+      console.log("Document paper size changed to:", value);
+      break;
+
+    case "orientation":
+      // Update the document's orientation
+      document.orientation = value as "portrait" | "landscape";
+      console.log("Document orientation changed to:", value);
       break;
 
     case "text":

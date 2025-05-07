@@ -89,6 +89,11 @@ import {
 import { Section, DocumentElement } from "../../types/document";
 import ElementLayerControls from "./ElementLayerControls.vue";
 import GridOverlay from "./GridOverlay.vue";
+import {
+  getPaperSizeByName,
+  DEFAULT_PAPER_SIZE,
+  getLandscapeSize,
+} from "../../utils/paperSizes";
 
 // Lazy-loaded element components with error handling
 const TextElement = defineAsyncComponent({
@@ -154,6 +159,8 @@ const props = defineProps<{
   isActive: boolean;
   showGrid?: boolean;
   isDrawing?: boolean;
+  paperSize?: string;
+  orientation?: "portrait" | "landscape";
   drawingRectStyle?: {
     left: string;
     top: string;
@@ -182,9 +189,34 @@ const showLayerControls = ref(true); // Always show layer controls
 const showGrid = ref(true); // Default to true, will be updated when props change
 const gridSize = ref(10); // Grid size in pixels (each small square is 10px)
 
-// Page dimensions in pixels (8.5in x 11in at 96dpi)
-const pageWidth = ref(816); // 8.5 inches * 96dpi
-const pageHeight = ref(1056); // 11 inches * 96dpi
+// Page dimensions based on paper size
+const pageWidth = computed(() => {
+  const paperSizeName = props.paperSize || "Letter";
+  const orientation = props.orientation || "portrait";
+
+  let paperSize = getPaperSizeByName(paperSizeName);
+
+  // Apply orientation
+  if (orientation === "landscape") {
+    paperSize = getLandscapeSize(paperSize);
+  }
+
+  return paperSize.width;
+});
+
+const pageHeight = computed(() => {
+  const paperSizeName = props.paperSize || "Letter";
+  const orientation = props.orientation || "portrait";
+
+  let paperSize = getPaperSizeByName(paperSizeName);
+
+  // Apply orientation
+  if (orientation === "landscape") {
+    paperSize = getLandscapeSize(paperSize);
+  }
+
+  return paperSize.height;
+});
 
 // Watch for changes to the showGrid prop
 watch(

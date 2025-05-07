@@ -92,6 +92,38 @@
 
     <div class="toolbar-divider"></div>
 
+    <div class="toolbar-group">
+      <!-- Paper size selector -->
+      <v-select
+        v-model="selectedPaperSize"
+        :items="paperSizes"
+        item-title="description"
+        item-value="name"
+        label="Paper Size"
+        density="compact"
+        class="paper-size-select"
+        @update:model-value="changePaperSize"
+      ></v-select>
+
+      <!-- Orientation selector -->
+      <v-btn-toggle
+        v-model="selectedOrientation"
+        mandatory
+        @update:model-value="changeOrientation"
+      >
+        <v-btn value="portrait" size="small">
+          <v-icon>mdi-page-layout-header</v-icon>
+          <v-tooltip activator="parent" location="bottom">Portrait</v-tooltip>
+        </v-btn>
+        <v-btn value="landscape" size="small">
+          <v-icon>mdi-page-layout-sidebar-right</v-icon>
+          <v-tooltip activator="parent" location="bottom">Landscape</v-tooltip>
+        </v-btn>
+      </v-btn-toggle>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
     <v-spacer></v-spacer>
 
     <div class="toolbar-group">
@@ -165,6 +197,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { useHistoryStore } from "../../stores/historyStore";
+import { PAPER_SIZES } from "../../utils/paperSizes";
 
 const historyStore = useHistoryStore();
 
@@ -176,6 +209,8 @@ const props = defineProps<{
   saveError?: boolean;
   saveMessage?: string;
   documentTitle?: string;
+  paperSize?: string;
+  orientation?: "portrait" | "landscape";
 }>();
 
 const emit = defineEmits<{
@@ -198,6 +233,33 @@ const textAlign = ref("left");
 // UI state
 const showRuler = ref(false);
 const showGrid = ref(true); // Default to true
+
+// Paper size state
+const paperSizes = PAPER_SIZES;
+const selectedPaperSize = ref(props.paperSize || "Letter");
+const selectedOrientation = ref(props.orientation || "portrait");
+
+// Watch for changes to the paperSize prop
+watch(
+  () => props.paperSize,
+  (newValue) => {
+    if (newValue) {
+      selectedPaperSize.value = newValue;
+    }
+  },
+  { immediate: true }
+);
+
+// Watch for changes to the orientation prop
+watch(
+  () => props.orientation,
+  (newValue) => {
+    if (newValue) {
+      selectedOrientation.value = newValue;
+    }
+  },
+  { immediate: true }
+);
 
 // Watch for changes to the showGrid prop
 watch(
@@ -248,6 +310,17 @@ function toggleGrid() {
   // Emit the event to notify parent components
   emit("tool-clicked", "grid", showGrid.value);
 }
+
+// Paper size functions
+function changePaperSize(size: string) {
+  console.log("Paper size changed to:", size);
+  emit("tool-clicked", "paper-size", size);
+}
+
+function changeOrientation(orientation: string) {
+  console.log("Orientation changed to:", orientation);
+  emit("tool-clicked", "orientation", orientation);
+}
 </script>
 
 <style scoped lang="scss">
@@ -279,6 +352,10 @@ function toggleGrid() {
 
 .font-select {
   width: 140px;
+}
+
+.paper-size-select {
+  width: 180px;
 }
 
 @media (max-width: 1200px) {
