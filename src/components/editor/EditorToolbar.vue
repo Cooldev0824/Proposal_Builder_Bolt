@@ -41,15 +41,47 @@
         <v-icon>mdi-image</v-icon>
         <v-tooltip activator="parent" location="bottom">Add Image</v-tooltip>
       </v-btn>
-      <v-btn
-        icon
-        @click="$emit('tool-clicked', 'shape')"
-        size="small"
-        :color="isActive('shape') ? 'primary' : ''"
-      >
-        <v-icon>mdi-shape</v-icon>
-        <v-tooltip activator="parent" location="bottom">Add Shape</v-tooltip>
-      </v-btn>
+      <v-menu>
+        <template v-slot:activator="{ props: menuProps }">
+          <v-btn
+            icon
+            v-bind="menuProps"
+            size="small"
+            :color="isActive('shape') ? 'primary' : ''"
+          >
+            <v-icon>mdi-shape</v-icon>
+            <v-tooltip activator="parent" location="bottom"
+              >Add Shape</v-tooltip
+            >
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item @click="$emit('tool-clicked', 'shape', 'rectangle')">
+            <v-list-item-title>Rectangle</v-list-item-title>
+            <template v-slot:prepend>
+              <v-icon>mdi-rectangle</v-icon>
+            </template>
+          </v-list-item>
+          <v-list-item @click="$emit('tool-clicked', 'shape', 'circle')">
+            <v-list-item-title>Circle</v-list-item-title>
+            <template v-slot:prepend>
+              <v-icon>mdi-circle</v-icon>
+            </template>
+          </v-list-item>
+          <v-list-item @click="$emit('tool-clicked', 'shape', 'triangle')">
+            <v-list-item-title>Triangle</v-list-item-title>
+            <template v-slot:prepend>
+              <v-icon>mdi-triangle</v-icon>
+            </template>
+          </v-list-item>
+          <v-list-item @click="$emit('tool-clicked', 'shape', 'arrow')">
+            <v-list-item-title>Arrow</v-list-item-title>
+            <template v-slot:prepend>
+              <v-icon>mdi-arrow-right</v-icon>
+            </template>
+          </v-list-item>
+        </v-list>
+      </v-menu>
       <v-btn
         icon
         @click="$emit('tool-clicked', 'line')"
@@ -174,6 +206,16 @@
         Preview
       </v-btn>
 
+      <v-btn
+        @click="$emit('tool-clicked', 'export-pdf')"
+        color="success"
+        :loading="isExportingPdf"
+        :disabled="isExportingPdf"
+      >
+        <v-icon left>mdi-file-pdf-box</v-icon>
+        Export PDF
+      </v-btn>
+
       <!-- Only show delete button if this is an existing document (has an ID that doesn't start with 'new-doc') -->
       <v-btn
         v-if="documentId && !documentId.startsWith('new-doc')"
@@ -206,6 +248,7 @@ const props = defineProps<{
   documentId?: string;
   paperSize?: string;
   orientation?: "portrait" | "landscape";
+  isExportingPdf?: boolean;
 }>();
 
 const emit = defineEmits<{

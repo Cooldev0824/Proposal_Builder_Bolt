@@ -11,6 +11,7 @@
       :documentId="document.id"
       :paperSize="document.paperSize"
       :orientation="document.orientation"
+      :isExportingPdf="isExportingPdf"
       @tool-clicked="handleToolClick"
       @save="saveDocument"
       @navigate-to-dashboard="navigateToDashboard"
@@ -186,6 +187,7 @@ import LayerControlPanel from "../components/editor/LayerControlPanel.vue";
 import Ruler from "../components/editor/Ruler.vue";
 import PreviewDialog from "../components/editor/PreviewDialog.vue";
 import DocumentSizeDialog from "../components/editor/DocumentSizeDialog.vue";
+import { directExportToPdf } from "../services/pdfExportService2";
 import { useDocumentStore } from "../stores/documentStore";
 import { useHistoryStore } from "../stores/historyStore";
 import { Section, DocumentElement, Document } from "../types/document";
@@ -214,6 +216,7 @@ const showGrid = ref(true); // Show grid by default
 const zoom = ref(1);
 const showPreview = ref(false);
 const showDocumentSizeDialog = ref(false);
+const isExportingPdf = ref(false);
 const showLayerPanel = ref(true); // Always show layer panel
 const activeTab = ref("properties"); // Default to properties tab
 
@@ -235,6 +238,7 @@ const drawStartX = ref(0);
 const drawStartY = ref(0);
 const drawEndX = ref(0);
 const drawEndY = ref(0);
+const currentShapeType = ref<string>("rectangle");
 
 const editorContentStyle = computed(() => ({
   transform: `scale(${zoom.value})`,
@@ -574,6 +578,46 @@ function cancelDrawing() {
 
 // Text selection is now handled by the global selection manager
 
+// Function to export the document to PDF
+async function exportToPdf() {
+  try {
+    isExportingPdf.value = true;
+
+    // Generate a default filename based on the document title
+    const filename = `${document.title || "document"}.pdf`;
+
+    // Export options
+    const options = {
+      filename: filename,
+      includeBackground: true,
+      quality: 2, // Normal quality
+      paperSize: document.paperSize,
+      orientation: document.orientation,
+    };
+
+    // Export the document to PDF
+    await directExportToPdf(document, options);
+
+    // Show success message
+    snackbar.value = {
+      show: true,
+      text: "PDF exported successfully",
+      color: "success",
+    };
+  } catch (error) {
+    console.error("Error exporting PDF:", error);
+
+    // Show error message
+    snackbar.value = {
+      show: true,
+      text: "Failed to export PDF. Please try again.",
+      color: "error",
+    };
+  } finally {
+    isExportingPdf.value = false;
+  }
+}
+
 function handleToolClick(tool: string, value?: any) {
   switch (tool) {
     case "undo":
@@ -638,6 +682,8 @@ function handleToolClick(tool: string, value?: any) {
     case "shape":
       // Set the drawing tool to shape and wait for user to draw
       drawingTool.value = "shape";
+      // Set the current shape type
+      currentShapeType.value = value || "rectangle";
       break;
 
     case "line":
@@ -667,6 +713,10 @@ function handleToolClick(tool: string, value?: any) {
 
     case "preview":
       showPreview.value = true;
+      break;
+
+    case "export-pdf":
+      exportToPdf();
       break;
   }
 }
@@ -759,7 +809,7 @@ function addShapeElement(
   const newElement: DocumentElement = {
     id: "shape-" + Date.now(),
     type: "shape",
-    content: "rectangle",
+    content: currentShapeType.value, // Use the current shape type
     position: { x: x ?? 100, y: y ?? 100 },
     size: { width: width ?? 200, height: height ?? 100 },
     style: {
