@@ -334,27 +334,31 @@ export async function directExportToPdf(
       const pageDiv = document.createElement("div");
       pageDiv.className = "preview-page";
       pageDiv.style.width = `${paperSizeObj.width}px`;
-      pageDiv.style.minHeight = `${paperSizeObj.height}px`;
+      pageDiv.style.height = `${paperSizeObj.height}px`; // Fixed height instead of minHeight
       pageDiv.style.backgroundColor = "white";
       pageDiv.style.position = "relative";
       pageDiv.style.boxSizing = "border-box";
       pageDiv.style.margin = "16px auto";
       pageDiv.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
+      pageDiv.style.overflow = "hidden"; // Ensure content doesn't exceed the page
 
       // Create the page content container
       const contentDiv = document.createElement("div");
       contentDiv.className = "page-content";
       contentDiv.style.position = "relative";
-      contentDiv.style.minHeight = "100%";
+      contentDiv.style.height = `${paperSizeObj.height}px`;
       contentDiv.style.padding = "24px";
       contentDiv.style.backgroundColor = "white";
       contentDiv.style.boxSizing = "border-box";
+      contentDiv.style.overflow = "hidden"; // Ensure content doesn't exceed the page
 
       // Create the elements container
       const elementsDiv = document.createElement("div");
       elementsDiv.className = "elements-container";
       elementsDiv.style.position = "relative";
-      elementsDiv.style.minHeight = "inherit";
+      elementsDiv.style.height = "100%";
+      elementsDiv.style.width = "100%";
+      elementsDiv.style.overflow = "hidden"; // Ensure elements don't overflow
 
       // Sort elements by zIndex
       const sortedElements = [...section.elements].sort((a, b) => {
@@ -380,6 +384,14 @@ export async function directExportToPdf(
 
           // Apply text styles
           if (element.style) {
+            // First, handle block background if it exists
+            if (element.style.blockBackground) {
+              elementContainer.style.backgroundColor =
+                element.style.blockBackgroundColor || "#f5f5f5";
+              elementContainer.style.padding = "8px";
+              elementContainer.style.borderRadius = "4px";
+            }
+
             Object.entries(element.style).forEach(([key, value]) => {
               if (value !== undefined && value !== null) {
                 switch (key) {
@@ -403,7 +415,10 @@ export async function directExportToPdf(
                     elementContainer.style.color = value as string;
                     break;
                   case "backgroundColor":
-                    elementContainer.style.backgroundColor = value as string;
+                    // Only apply backgroundColor if blockBackground is not enabled
+                    if (!element.style.blockBackground) {
+                      elementContainer.style.backgroundColor = value as string;
+                    }
                     break;
                   case "textAlign":
                     elementContainer.style.textAlign = value as string;
