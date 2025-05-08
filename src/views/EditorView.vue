@@ -8,11 +8,13 @@
       :saveError="saveError"
       :saveMessage="saveMessage"
       :documentTitle="document.title"
+      :documentId="document.id"
       :paperSize="document.paperSize"
       :orientation="document.orientation"
       @tool-clicked="handleToolClick"
       @save="saveDocument"
       @navigate-to-dashboard="navigateToDashboard"
+      @delete-document="showDeleteConfirmation"
     />
 
     <div class="editor-container">
@@ -102,24 +104,6 @@
       @update:orientation="updateOrientation"
     />
 
-    <!-- Add confirmation dialog -->
-    <v-dialog v-model="showUnsavedChangesDialog" max-width="400">
-      <v-card>
-        <v-card-title>Unsaved Changes</v-card-title>
-        <v-card-text>
-          You have unsaved changes. Do you want to save before leaving?
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="handleUnsavedChanges('discard')">Discard</v-btn>
-          <v-btn text @click="handleUnsavedChanges('cancel')">Cancel</v-btn>
-          <v-btn color="primary" @click="handleUnsavedChanges('save')"
-            >Save</v-btn
-          >
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Add title dialog -->
     <v-dialog v-model="showTitleDialog" max-width="400">
       <v-card>
@@ -139,6 +123,48 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Delete confirmation dialog -->
+    <v-dialog v-model="showDeleteDialog" max-width="400">
+      <v-card>
+        <v-card-title>Delete Document</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete this document? This action cannot be
+          undone.
+          <div v-if="isDeleting" class="mt-4">
+            <v-progress-linear
+              indeterminate
+              color="primary"
+            ></v-progress-linear>
+            <div class="text-center mt-2">
+              Deleting document and associated resources...
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="cancelDelete" :disabled="isDeleting"
+            >Cancel</v-btn
+          >
+          <v-btn
+            color="error"
+            @click="confirmDelete"
+            :loading="isDeleting"
+            :disabled="isDeleting"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
+      {{ snackbar.text }}
+      <template v-slot:actions>
+        <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
@@ -191,6 +217,17 @@ const showDocumentSizeDialog = ref(false);
 const showLayerPanel = ref(true); // Always show layer panel
 const activeTab = ref("properties"); // Default to properties tab
 
+// Delete dialog state
+const showDeleteDialog = ref(false);
+const isDeleting = ref(false);
+
+// Snackbar for notifications
+const snackbar = ref({
+  show: false,
+  text: "",
+  color: "success",
+});
+
 // Drawing state for creating elements by drawing an area
 const isDrawing = ref(false);
 const drawingTool = ref<string | null>(null);
@@ -198,7 +235,6 @@ const drawStartX = ref(0);
 const drawStartY = ref(0);
 const drawEndX = ref(0);
 const drawEndY = ref(0);
-const drawingRect = ref<HTMLElement | null>(null);
 
 const editorContentStyle = computed(() => ({
   transform: `scale(${zoom.value})`,
@@ -308,9 +344,13 @@ function deleteSection(index: number) {
   }
 }
 
-function selectElement(element: DocumentElement) {
+function selectElement(element: DocumentElement | null) {
   selectedElement.value = element;
-  activeTools.value = [element.type];
+  if (element) {
+    activeTools.value = [element.type];
+  } else {
+    activeTools.value = [];
+  }
 }
 
 function updateElement(element: DocumentElement) {
@@ -1025,8 +1065,6 @@ const saveSuccess = ref(false);
 const saveError = ref(false);
 const saveMessage = ref("");
 const hasUnsavedChanges = ref(false);
-const showUnsavedChangesDialog = ref(false);
-const pendingNavigation = ref(null);
 
 // Add these refs for the title dialog
 const showTitleDialog = ref(false);
@@ -1069,7 +1107,7 @@ function saveDocument() {
 }
 
 // Add a ref to store the navigation timeout
-const navigationTimeout = ref(null);
+const navigationTimeout = ref<number | null>(null);
 
 // Function to handle the actual save after title is confirmed
 async function performSave() {
@@ -1174,16 +1212,11 @@ function confirmSaveWithTitle() {
 function cancelSave() {
   showTitleDialog.value = false;
   pendingSave.value = false;
-
-  // If this was triggered by navigation, cancel the navigation
-  if (pendingNavigation.value) {
-    pendingNavigation.value = null;
-  }
 }
 
 // Add autosave functionality
 // const lastEdit = ref(Date.now());
-const autoSaveInterval = 60000; // 1 minute
+// Autosave is disabled for now
 let autoSaveTimer: number | null = null;
 
 // Watch for document changes and mark for autosave
@@ -1232,111 +1265,65 @@ function handleKeyDown(event: KeyboardEvent) {
   }
 }
 
-// Handle unsaved changes dialog actions
-async function handleUnsavedChanges(action) {
-  showUnsavedChangesDialog.value = false;
+// Unsaved changes dialog actions removed
 
-  switch (action) {
-    case "save":
-      // Show title dialog first, then save
-      // Set pendingSave to true to prevent the unsaved changes dialog from showing again
-      pendingSave.value = true;
-      saveDocument();
-      break;
+// Navigation guard removed - allow direct navigation without confirmation
 
-    case "discard":
-      // Discard changes and navigate
-      resetUnsavedChanges();
-      if (pendingNavigation.value) {
-        router.push(pendingNavigation.value);
-        pendingNavigation.value = null;
-      }
-      break;
-
-    case "cancel":
-      // Stay on the current page
-      pendingNavigation.value = null;
-      break;
-  }
-}
-
-// Add navigation guard
-onMounted(() => {
-  // Other onMounted code...
-
-  // Add navigation guard and store the remove function
-  const removeGuard = router.beforeEach((to, from, next) => {
-    // Only apply this guard when navigating away from the editor
-    if (from.name !== "Editor") {
-      next();
-      return;
-    }
-
-    // If we have unsaved changes and we're not in the process of saving
-    if (
-      hasUnsavedChanges.value &&
-      !pendingSave.value &&
-      !isSaving.value &&
-      !saveSuccess.value
-    ) {
-      // Store the intended destination
-      pendingNavigation.value = to.fullPath;
-
-      // Show the confirmation dialog
-      showUnsavedChangesDialog.value = true;
-
-      // Prevent navigation for now
-      next(false);
-    } else {
-      // No unsaved changes or we're in the process of saving, proceed with navigation
-      next();
-    }
-  });
-
-  // Clean up the navigation guard when component is unmounted
-  onBeforeUnmount(() => {
-    // Remove the navigation guard
-    if (removeGuard) {
-      removeGuard();
-    }
-  });
-});
-
-// Also add a window beforeunload event to catch browser/tab closes
-onMounted(() => {
-  // Other onMounted code...
-
-  // Add beforeunload event listener
-  window.addEventListener("beforeunload", handleBeforeUnload);
-});
-
-onBeforeUnmount(() => {
-  // Other onBeforeUnmount code...
-
-  // Remove beforeunload event listener
-  window.removeEventListener("beforeunload", handleBeforeUnload);
-});
-
-function handleBeforeUnload(event) {
-  // Only show the confirmation if we have unsaved changes and we're not in the process of saving
-  if (hasUnsavedChanges.value && !pendingSave.value && !isSaving.value) {
-    // Standard way to show a confirmation dialog when closing the browser
-    const message = "You have unsaved changes. Are you sure you want to leave?";
-    event.returnValue = message;
-    return message;
-  }
-}
+// Beforeunload event handler removed - allow closing without confirmation
 
 // Update navigation function to go directly to dashboard
 function navigateToDashboard() {
-  // If there are unsaved changes, confirm with the user
-  if (hasUnsavedChanges.value && !saveSuccess.value) {
-    if (confirm("You have unsaved changes. Are you sure you want to leave?")) {
-      router.push("/");
-    }
-  } else {
-    // If no unsaved changes, go directly to dashboard
+  // Always navigate directly to the dashboard without confirmation
+  router.push("/");
+}
+
+// Show delete confirmation dialog
+function showDeleteConfirmation() {
+  showDeleteDialog.value = true;
+}
+
+// Cancel delete operation
+function cancelDelete() {
+  showDeleteDialog.value = false;
+}
+
+// Confirm delete operation
+async function confirmDelete() {
+  if (!document.id || document.id.startsWith("new-doc")) {
+    // Don't try to delete new documents that haven't been saved
+    showDeleteDialog.value = false;
+    return;
+  }
+
+  isDeleting.value = true;
+
+  try {
+    // Call the document store to delete the document
+    await documentStore.deleteDocument(document.id);
+
+    // Show success notification
+    snackbar.value = {
+      show: true,
+      text: `"${document.title}" has been deleted successfully.`,
+      color: "success",
+    };
+
+    // Close the dialog
+    showDeleteDialog.value = false;
+
+    // Navigate to the dashboard
     router.push("/");
+  } catch (error) {
+    console.error("Error deleting document:", error);
+
+    // Show error notification
+    snackbar.value = {
+      show: true,
+      text: "Failed to delete document. Please try again.",
+      color: "error",
+    };
+  } finally {
+    isDeleting.value = false;
   }
 }
 </script>

@@ -173,6 +173,17 @@
         <v-icon left>mdi-eye</v-icon>
         Preview
       </v-btn>
+
+      <!-- Only show delete button if this is an existing document (has an ID that doesn't start with 'new-doc') -->
+      <v-btn
+        v-if="documentId && !documentId.startsWith('new-doc')"
+        color="error"
+        @click="$emit('delete-document')"
+        class="ml-2"
+      >
+        <v-icon left>mdi-delete</v-icon>
+        Delete
+      </v-btn>
     </div>
   </div>
 </template>
@@ -192,6 +203,7 @@ const props = defineProps<{
   saveError?: boolean;
   saveMessage?: string;
   documentTitle?: string;
+  documentId?: string;
   paperSize?: string;
   orientation?: "portrait" | "landscape";
 }>();
@@ -200,6 +212,7 @@ const emit = defineEmits<{
   (e: "tool-clicked", tool: string, value?: any): void;
   (e: "save"): void;
   (e: "navigate-to-dashboard"): void;
+  (e: "delete-document"): void;
 }>();
 
 const canUndo = computed(() => historyStore.canUndo());
