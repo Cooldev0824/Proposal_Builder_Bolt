@@ -98,7 +98,9 @@ const elementStyle = computed(() => {
 
 const textStyle = computed(() => {
   const style = props.element.style || {};
-  return {
+
+  // Base styles
+  const baseStyles = {
     fontFamily: getFontFamilyValue(style.fontFamily || "Roboto"),
     fontSize: `${style.fontSize || 16}px`,
     fontWeight: style.bold ? "bold" : "normal",
@@ -109,7 +111,9 @@ const textStyle = computed(() => {
     backgroundColor: style.blockBackground
       ? "transparent"
       : style.backgroundColor || "transparent",
-    lineHeight: "1.5",
+    textIndent: style.textIndent ? `${style.textIndent}px` : "0px",
+    lineHeight: style.lineHeight ? style.lineHeight : 1.5,
+    paddingLeft: style.paragraphIndent ? `${style.paragraphIndent}px` : "0px",
     margin: 0,
     padding: 0,
     whiteSpace: "pre-wrap",
@@ -118,14 +122,35 @@ const textStyle = computed(() => {
     cursor: "text",
     userSelect: "text",
   };
+
+  // Add list styles if needed
+  if (style.listType === "bullet") {
+    return {
+      ...baseStyles,
+      listStyleType: "disc",
+      listStylePosition: "inside",
+      display: "list-item",
+      paddingLeft: "20px", // Add padding for better visual appearance
+      marginLeft: style.paragraphIndent ? `${style.paragraphIndent}px` : "0px",
+    };
+  } else if (style.listType === "number") {
+    return {
+      ...baseStyles,
+      listStyleType: "decimal",
+      listStylePosition: "inside",
+      display: "list-item",
+      paddingLeft: "20px", // Add padding for better visual appearance
+      marginLeft: style.paragraphIndent ? `${style.paragraphIndent}px` : "0px",
+    };
+  }
+
+  return baseStyles;
 });
 
 // Watch for style changes
 watch(
   () => props.element.style,
   (newStyle) => {
-    console.log("TextElement: style changed", newStyle);
-
     // Update the text style
     if (contentElement.value) {
       Object.assign(contentElement.value.style, textStyle.value);
@@ -133,10 +158,6 @@ watch(
 
     // Force update of the element style for block background
     if (newStyle?.blockBackground) {
-      console.log(
-        "Updating block background color:",
-        newStyle.blockBackgroundColor
-      );
       const elementDiv = contentElement.value?.parentElement;
       if (elementDiv) {
         elementDiv.style.backgroundColor =
@@ -214,7 +235,7 @@ function restoreCursorPosition() {
 
     return true;
   } catch (error) {
-    console.error("Error restoring cursor position:", error);
+    // Error restoring cursor position
     return false;
   }
 }
@@ -295,7 +316,7 @@ function handleTextChange(event: Event) {
     );
     textAfterCursor = afterRange.toString();
   } catch (error) {
-    console.error("Error getting text around cursor:", error);
+    // Error getting text around cursor
   }
 
   // Update the element content
@@ -338,7 +359,7 @@ function handleTextChange(event: Event) {
         selection.removeAllRanges();
         selection.addRange(newRange);
 
-        console.log("Cursor restored using direct container reference");
+        // Cursor restored using direct container reference
       }
       // If that fails, try using the node path
       else if (nodePath) {
@@ -362,7 +383,7 @@ function handleTextChange(event: Event) {
           selection.removeAllRanges();
           selection.addRange(newRange);
 
-          console.log("Cursor restored using node path");
+          // Cursor restored using node path
         }
         // If node path fails, try text-based approach
         else if (textBeforeCursor) {
@@ -418,13 +439,13 @@ function handleTextChange(event: Event) {
               newRange.setEnd(targetNode, targetOffset);
               selection.removeAllRanges();
               selection.addRange(newRange);
-              console.log("Cursor restored using text content approach");
+              // Cursor restored using text content approach
             }
           }
         }
       }
     } catch (error) {
-      console.error("Error restoring selection:", error);
+      // Error restoring selection
     } finally {
       isUpdating = false;
     }
@@ -433,6 +454,93 @@ function handleTextChange(event: Event) {
 
 // Handle key down events
 function handleKeyDown(event: KeyboardEvent) {
+  // Handle keyboard shortcuts
+  if ((event.ctrlKey || event.metaKey) && isEditing.value) {
+    switch (event.key.toLowerCase()) {
+      case "b": // Bold
+        event.preventDefault();
+        // Apply bold to selected text if there's a selection
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+          applyStyleToSelectedText("bold", true);
+        } else {
+          // Otherwise toggle bold for the whole element
+          emit("update:element", {
+            ...props.element,
+            style: {
+              ...props.element.style,
+              bold: !props.element.style.bold,
+            },
+          });
+        }
+        return;
+      case "i": // Italic
+        event.preventDefault();
+        // Apply italic to selected text if there's a selection
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+          applyStyleToSelectedText("italic", true);
+        } else {
+          // Otherwise toggle italic for the whole element
+          emit("update:element", {
+            ...props.element,
+            style: {
+              ...props.element.style,
+              italic: !props.element.style.italic,
+            },
+          });
+        }
+        return;
+      case "u": // Underline
+        event.preventDefault();
+        // Apply underline to selected text if there's a selection
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+          applyStyleToSelectedText("underline", true);
+        } else {
+          // Otherwise toggle underline for the whole element
+          emit("update:element", {
+            ...props.element,
+            style: {
+              ...props.element.style,
+              underline: !props.element.style.underline,
+            },
+          });
+        }
+        return;
+    }
+  }
+
+  // Handle Tab key for indentation
+  if (event.key === "Tab" && isEditing.value) {
+    event.preventDefault();
+
+    if (event.shiftKey) {
+      // Decrease indent with Shift+Tab
+      const currentIndent = props.element.style?.paragraphIndent || 0;
+      const newIndent = Math.max(0, currentIndent - 10);
+
+      emit("update:element", {
+        ...props.element,
+        style: {
+          ...props.element.style,
+          paragraphIndent: newIndent,
+        },
+      });
+    } else {
+      // Increase indent with Tab
+      const currentIndent = props.element.style?.paragraphIndent || 0;
+      const newIndent = currentIndent + 10;
+
+      emit("update:element", {
+        ...props.element,
+        style: {
+          ...props.element.style,
+          paragraphIndent: newIndent,
+        },
+      });
+    }
+    return;
+  }
+
   // Handle Enter key press (both with and without Shift)
   // We treat all Enter key presses as Shift+Enter (inserting a line break instead of a paragraph)
   if (event.key === "Enter") {
@@ -512,15 +620,12 @@ function handleKeyDown(event: KeyboardEvent) {
           selection.removeAllRanges();
           selection.addRange(restoreRange);
 
-          console.log("Cursor position restored after Enter key press");
+          // Cursor position restored after Enter key press
         } else {
-          console.warn("Could not find the inserted <br> element");
+          // Could not find the inserted <br> element
         }
       } catch (error) {
-        console.error(
-          "Error restoring cursor position after Enter key press:",
-          error
-        );
+        // Error restoring cursor position after Enter key press
       } finally {
         isUpdating = false;
       }
@@ -549,6 +654,9 @@ function handleMouseUp() {
   setTimeout(() => {
     // Emit an event to notify that text might be selected
     emitSelectionState();
+
+    // Save cursor position for better reliability
+    saveCursorPosition();
   }, 0);
 }
 
@@ -560,12 +668,17 @@ function handleKeyUp(event: KeyboardEvent) {
     event.key.includes("Arrow") ||
     event.key === "Home" ||
     event.key === "End" ||
+    event.key === "PageUp" ||
+    event.key === "PageDown" ||
     event.ctrlKey ||
     event.metaKey
   ) {
     // Small delay to ensure the selection is properly set
     setTimeout(() => {
       emitSelectionState();
+
+      // Save cursor position for better reliability
+      saveCursorPosition();
     }, 0);
   }
 }
@@ -584,17 +697,13 @@ function emitSelectionState() {
 
   // Check if the selection is within our content element
   if (contentElement.value.contains(range.commonAncestorContainer)) {
-    console.log("Text selection detected in TextElement", {
-      elementId: props.element.id,
-      text: range.toString(),
-    });
+    // Text selection detected in TextElement
 
     // Force focus on the content element to ensure the selection is active
     contentElement.value.focus();
 
     // Explicitly call saveSelection from the selection manager
-    const saved = saveSelection();
-    console.log("Selection saved:", saved);
+    saveSelection();
   }
 }
 
@@ -611,10 +720,9 @@ function applyStyleToSelectedText(
   styleProperty: string,
   value: string | boolean
 ) {
-  console.log(`Applying style: ${styleProperty} = ${value} to selected text`);
+  // Applying style to selected text
 
   if (!contentElement.value) {
-    console.error("No content element found");
     return false;
   }
 
@@ -623,26 +731,23 @@ function applyStyleToSelectedText(
 
   const selection = window.getSelection();
   if (!selection || !selection.rangeCount) {
-    console.error("No selection found");
     return false;
   }
 
   const range = selection.getRangeAt(0);
-  console.log("Selection range:", range.toString());
+  // Get selection range
 
   // If no text is selected, return false (will apply to whole element instead)
   if (range.collapsed) {
-    console.error("Range is collapsed (no text selected)");
     return false;
   }
 
   // Make sure the selection is within our content element
   if (!contentElement.value.contains(range.commonAncestorContainer)) {
-    console.error("Selection is not within content element");
     return false;
   }
 
-  console.log("Selection is valid, applying style...");
+  // Selection is valid, applying style
 
   // Apply the style to the selected text
   let command = "";
@@ -663,8 +768,6 @@ function applyStyleToSelectedText(
       break;
     case "fontSize":
       // Special handling for font size
-      console.log("Special handling for font size:", value);
-
       // Create a span with the specified font size
       const fontSizeSpan = document.createElement("span");
       fontSizeSpan.style.fontSize = value + "px";
@@ -689,16 +792,13 @@ function applyStyleToSelectedText(
       };
 
       emit("update:element", fontSizeUpdatedElement);
-      console.log("Font size applied successfully with span");
       return true;
     case "heading":
       // Special handling for headings
-      console.log("Applying heading:", value);
 
       // Create the appropriate heading element
       const headingLevel = parseInt(value as string);
       if (isNaN(headingLevel) || headingLevel < 1 || headingLevel > 6) {
-        console.error("Invalid heading level:", value);
         return false;
       }
 
@@ -712,24 +812,49 @@ function applyStyleToSelectedText(
           headingElement.style.fontSize = "32px";
           headingElement.style.fontWeight = "bold";
           headingElement.style.marginBottom = "16px";
+          headingElement.style.marginTop = "16px";
           headingElement.style.color = "#333";
+          headingElement.style.lineHeight = "1.2";
           break;
         case 2: // H2
           headingElement.style.fontSize = "28px";
           headingElement.style.fontWeight = "bold";
           headingElement.style.marginBottom = "14px";
+          headingElement.style.marginTop = "14px";
           headingElement.style.color = "#444";
+          headingElement.style.lineHeight = "1.2";
           break;
         case 3: // H3
           headingElement.style.fontSize = "24px";
           headingElement.style.fontWeight = "bold";
           headingElement.style.marginBottom = "12px";
+          headingElement.style.marginTop = "12px";
           headingElement.style.color = "#555";
+          headingElement.style.lineHeight = "1.3";
           break;
-        default: // H4-H6
-          headingElement.style.fontSize = 28 - headingLevel * 2 + "px";
+        case 4: // H4
+          headingElement.style.fontSize = "20px";
           headingElement.style.fontWeight = "bold";
           headingElement.style.marginBottom = "10px";
+          headingElement.style.marginTop = "10px";
+          headingElement.style.color = "#666";
+          headingElement.style.lineHeight = "1.3";
+          break;
+        case 5: // H5
+          headingElement.style.fontSize = "18px";
+          headingElement.style.fontWeight = "bold";
+          headingElement.style.marginBottom = "8px";
+          headingElement.style.marginTop = "8px";
+          headingElement.style.color = "#777";
+          headingElement.style.lineHeight = "1.4";
+          break;
+        case 6: // H6
+          headingElement.style.fontSize = "16px";
+          headingElement.style.fontWeight = "bold";
+          headingElement.style.marginBottom = "6px";
+          headingElement.style.marginTop = "6px";
+          headingElement.style.color = "#888";
+          headingElement.style.lineHeight = "1.4";
           break;
       }
 
@@ -753,7 +878,6 @@ function applyStyleToSelectedText(
       };
 
       emit("update:element", headingUpdatedElement);
-      console.log(`Heading ${headingLevel} applied successfully`);
       return true;
     case "foreColor":
       command = "foreColor";
@@ -769,7 +893,7 @@ function applyStyleToSelectedText(
       value2 = null;
       break;
     default:
-      console.log(`Using custom span for style: ${styleProperty}`);
+      // Using custom span for style
       // For unsupported commands, wrap in a span with inline style
       const span = document.createElement("span");
       span.style.setProperty(styleProperty, value as string);
@@ -794,13 +918,11 @@ function applyStyleToSelectedText(
       };
 
       emit("update:element", updatedElement);
-      console.log("Style applied successfully with span");
       return true;
   }
 
   // For supported commands, use execCommand
   if (command) {
-    console.log(`Using execCommand: ${command} with value: ${value2}`);
     document.execCommand(command, false, value2 as string | null);
 
     // Update the element content
@@ -810,11 +932,9 @@ function applyStyleToSelectedText(
     };
 
     emit("update:element", updatedElement);
-    console.log("Style applied successfully with execCommand");
     return true;
   }
 
-  console.error("Failed to apply style");
   return false;
 }
 
@@ -957,10 +1077,7 @@ onMounted(() => {
   nextTick(() => {
     // Force update of the element style for block background
     if (props.element.style?.blockBackground) {
-      console.log(
-        "Initial block background color:",
-        props.element.style.blockBackgroundColor
-      );
+      // Apply initial block background color
       const elementDiv = contentElement.value?.parentElement;
       if (elementDiv) {
         elementDiv.style.backgroundColor =
@@ -1005,7 +1122,7 @@ onMounted(() => {
         // Save the selection for text formatting
         const selection = window.getSelection();
         if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
-          console.log("Selection saved in TextElement mouseup handler");
+          // Selection saved in TextElement mouseup handler
         }
       }, 10);
     });
@@ -1024,7 +1141,7 @@ onMounted(() => {
         // Save the selection for text formatting
         const selection = window.getSelection();
         if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
-          console.log("Selection saved in TextElement keyup handler");
+          // Selection saved in TextElement keyup handler
         }
       }
     });
@@ -1097,6 +1214,11 @@ onBeforeUnmount(() => {
       color: inherit !important;
     }
 
+    *::selection {
+      background-color: rgba(0, 123, 255, 0.3) !important;
+      color: inherit !important;
+    }
+
     /* Ensure spans created by text formatting are properly styled */
     span {
       display: inline;
@@ -1109,6 +1231,26 @@ onBeforeUnmount(() => {
       display: inline;
       vertical-align: baseline;
       line-height: normal;
+    }
+
+    /* Ensure proper cursor positioning in empty elements */
+    &:empty {
+      min-height: 1em;
+      display: block;
+    }
+
+    /* Ensure proper cursor positioning with different font sizes */
+    span,
+    p,
+    div,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      min-height: 1em;
+      caret-color: black;
     }
 
     /* Style heading elements */

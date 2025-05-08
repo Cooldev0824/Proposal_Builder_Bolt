@@ -145,6 +145,133 @@
       </v-btn>
     </div>
 
+    <div class="property-row mt-4">
+      <v-btn
+        :color="listType === 'bullet' ? 'primary' : undefined"
+        icon
+        size="small"
+        @click="toggleBulletList"
+        title="Bullet List"
+      >
+        <v-icon>mdi-format-list-bulleted</v-icon>
+      </v-btn>
+
+      <v-btn
+        :color="listType === 'number' ? 'primary' : undefined"
+        icon
+        size="small"
+        @click="toggleNumberedList"
+        title="Numbered List"
+      >
+        <v-icon>mdi-format-list-numbered</v-icon>
+      </v-btn>
+
+      <v-btn icon size="small" @click="increaseIndent" title="Increase Indent">
+        <v-icon>mdi-format-indent-increase</v-icon>
+      </v-btn>
+
+      <v-btn icon size="small" @click="decreaseIndent" title="Decrease Indent">
+        <v-icon>mdi-format-indent-decrease</v-icon>
+      </v-btn>
+    </div>
+
+    <div class="property-row mt-4">
+      <v-btn
+        icon
+        size="small"
+        @click="transformText('uppercase')"
+        title="UPPERCASE"
+      >
+        <v-icon>mdi-format-letter-case-upper</v-icon>
+      </v-btn>
+
+      <v-btn
+        icon
+        size="small"
+        @click="transformText('lowercase')"
+        title="lowercase"
+      >
+        <v-icon>mdi-format-letter-case-lower</v-icon>
+      </v-btn>
+
+      <v-btn
+        icon
+        size="small"
+        @click="transformText('capitalize')"
+        title="Capitalize"
+      >
+        <v-icon>mdi-format-letter-case</v-icon>
+      </v-btn>
+
+      <v-btn
+        icon
+        size="small"
+        @click="clearFormatting"
+        title="Clear Formatting"
+      >
+        <v-icon>mdi-format-clear</v-icon>
+      </v-btn>
+    </div>
+
+    <div class="first-line-indent mb-4 mt-4">
+      <div class="d-flex align-center justify-space-between">
+        <label class="text-body-2 text-medium-emphasis"
+          >First Line Indent</label
+        >
+        <v-chip size="small" color="primary" class="ml-2"
+          >{{ textIndent }}px</v-chip
+        >
+      </div>
+      <v-slider
+        v-model="textIndent"
+        min="0"
+        max="100"
+        step="5"
+        thumb-label
+        density="compact"
+        hide-details
+        @update:model-value="updateTextIndent"
+      ></v-slider>
+    </div>
+
+    <div class="line-spacing mb-4">
+      <div class="d-flex align-center justify-space-between">
+        <label class="text-body-2 text-medium-emphasis">Line Spacing</label>
+        <v-chip size="small" color="primary" class="ml-2">{{
+          lineSpacing
+        }}</v-chip>
+      </div>
+      <v-slider
+        v-model="lineSpacing"
+        min="1"
+        max="3"
+        step="0.1"
+        thumb-label
+        density="compact"
+        hide-details
+        @update:model-value="updateLineSpacing"
+      ></v-slider>
+    </div>
+
+    <div class="paragraph-indent mb-4">
+      <div class="d-flex align-center justify-space-between">
+        <label class="text-body-2 text-medium-emphasis">Paragraph Indent</label>
+        <v-chip size="small" color="primary" class="ml-2"
+          >{{ paragraphIndent }}px</v-chip
+        >
+      </div>
+      <v-slider
+        v-model="paragraphIndent"
+        min="0"
+        max="100"
+        step="5"
+        thumb-label
+        density="compact"
+        hide-details
+        @update:model-value="updateParagraphIndent"
+      ></v-slider>
+    </div>
+
     <v-divider class="my-4"></v-divider>
 
     <div class="colors-section">
@@ -297,6 +424,10 @@ const bold = ref(props.element.style?.bold || false);
 const italic = ref(props.element.style?.italic || false);
 const underline = ref(props.element.style?.underline || false);
 const textAlign = ref(props.element.style?.align || "left");
+const textIndent = ref(props.element.style?.textIndent || 0);
+const lineSpacing = ref(props.element.style?.lineHeight || 1.5);
+const paragraphIndent = ref(props.element.style?.paragraphIndent || 0);
+const listType = ref(props.element.style?.listType || "none");
 const textColor = ref(props.element.style?.color || "#000000");
 const backgroundColor = ref(
   props.element.style?.backgroundColor || "transparent"
@@ -335,10 +466,7 @@ function getFontFamilyValue(fontName: string): string {
   return getFontFamilyValueUtil(fontName);
 }
 
-// Color picker visibility
-const showTextColorPicker = ref(false);
-const showBgColorPicker = ref(false);
-const showBlockBgColorPicker = ref(false);
+// No longer needed with AdvancedColorPicker
 
 const colorPresets = [
   "#000000",
@@ -383,6 +511,10 @@ watch(
     italic.value = newValue.style?.italic || false;
     underline.value = newValue.style?.underline || false;
     textAlign.value = newValue.style?.align || "left";
+    textIndent.value = newValue.style?.textIndent || 0;
+    lineSpacing.value = newValue.style?.lineHeight || 1.5;
+    paragraphIndent.value = newValue.style?.paragraphIndent || 0;
+    listType.value = newValue.style?.listType || "none";
     textColor.value = newValue.style?.color || "#000000";
     backgroundColor.value = newValue.style?.backgroundColor || "transparent";
     blockBackground.value = newValue.style?.blockBackground || false;
@@ -405,8 +537,6 @@ function updateElement(updates: Partial<typeof props.element.style>) {
 // Use the hasTextSelection prop to determine if text is selected
 
 function updateTextStyle() {
-  console.log("TextProperties: updateTextStyle", textStyle.value);
-
   // Check if we're applying a heading style
   if (textStyle.value.startsWith("Heading ")) {
     // Extract the heading level (1-6)
@@ -414,7 +544,6 @@ function updateTextStyle() {
 
     if (hasSavedSelection()) {
       // Apply heading to selected text
-      console.log("Applying heading to selection:", headingLevel);
       directlyApplyStyle("heading", headingLevel.toString());
     } else {
       // Apply heading to the whole element
@@ -478,10 +607,7 @@ function updateTextStyle() {
 }
 
 function updateFontFamily() {
-  console.log("TextProperties: updateFontFamily", fontFamily.value);
-
   if (!fontFamily.value) {
-    console.warn("No font family selected");
     return;
   }
 
@@ -495,13 +621,10 @@ function updateFontFamily() {
 }
 
 function updateFontSize() {
-  console.log("TextProperties: updateFontSize", fontSize.value);
-
   // Force a small delay to ensure any selection is properly saved
   setTimeout(() => {
     // Check if there's a text selection
     const hasSelection = hasSavedSelection();
-    console.log("Has saved selection for font size:", hasSelection);
 
     if (hasSelection) {
       // Make sure the font size has 'px' units
@@ -509,20 +632,13 @@ function updateFontSize() {
         ? fontSize.value.toString()
         : `${fontSize.value}px`;
 
-      console.log("Applying font size with units:", fontSizeWithUnits);
-
       // Apply font size to selected text only using our direct method
-      const success = directlyApplyStyle("fontSize", fontSizeWithUnits);
-      console.log(
-        "Applied font size to selection using directlyApplyStyle:",
-        success
-      );
+      directlyApplyStyle("fontSize", fontSizeWithUnits);
 
       // The content will be updated by the TextElement component's mutation observer
       // No need to manually update the element here
     } else {
       // Apply font size to the whole element
-      console.log("Applying font size to whole element:", fontSize.value);
       updateElement({ fontSize: fontSize.value });
     }
   }, 0);
@@ -530,7 +646,6 @@ function updateFontSize() {
 
 function toggleBoldStyle() {
   bold.value = !bold.value;
-  console.log("TextProperties: toggleBold");
   if (hasSavedSelection()) {
     applyBold();
   } else {
@@ -540,7 +655,6 @@ function toggleBoldStyle() {
 
 function toggleItalicStyle() {
   italic.value = !italic.value;
-  console.log("TextProperties: toggleItalic");
   if (hasSavedSelection()) {
     applyItalic();
   } else {
@@ -550,7 +664,6 @@ function toggleItalicStyle() {
 
 function toggleUnderlineStyle() {
   underline.value = !underline.value;
-  console.log("TextProperties: toggleUnderline");
   if (hasSavedSelection()) {
     applyUnderline();
   } else {
@@ -560,7 +673,6 @@ function toggleUnderlineStyle() {
 
 function setTextAlign(align: string) {
   textAlign.value = align;
-  console.log("TextProperties: setTextAlign");
   if (hasSavedSelection()) {
     applyTextAlignment(align as "left" | "center" | "right" | "justify");
   } else {
@@ -568,61 +680,248 @@ function setTextAlign(align: string) {
   }
 }
 
-function updateTextColor() {
-  console.log("TextProperties: updateTextColor", textColor.value);
+function updateTextIndent() {
+  // Text indent only applies to the whole element, not to selected text
+  updateElement({ textIndent: textIndent.value });
+}
 
+function updateLineSpacing() {
+  // Line spacing only applies to the whole element, not to selected text
+  updateElement({ lineHeight: lineSpacing.value });
+}
+
+function updateParagraphIndent() {
+  // Paragraph indent only applies to the whole element, not to selected text
+  updateElement({ paragraphIndent: paragraphIndent.value });
+}
+
+function toggleBulletList() {
+  if (listType.value === "bullet") {
+    // If already a bullet list, turn it off
+    listType.value = "none";
+    updateElement({ listType: "none" });
+  } else {
+    // Turn on bullet list
+    listType.value = "bullet";
+    updateElement({ listType: "bullet" });
+  }
+}
+
+function toggleNumberedList() {
+  if (listType.value === "number") {
+    // If already a numbered list, turn it off
+    listType.value = "none";
+    updateElement({ listType: "none" });
+  } else {
+    // Turn on numbered list
+    listType.value = "number";
+    updateElement({ listType: "number" });
+  }
+}
+
+function increaseIndent() {
+  // Increase paragraph indent by 10px
+  paragraphIndent.value += 10;
+  updateElement({ paragraphIndent: paragraphIndent.value });
+}
+
+function decreaseIndent() {
+  // Decrease paragraph indent by 10px, but not below 0
+  paragraphIndent.value = Math.max(0, paragraphIndent.value - 10);
+  updateElement({ paragraphIndent: paragraphIndent.value });
+}
+
+function transformText(
+  transformType: "uppercase" | "lowercase" | "capitalize"
+) {
+  // Check if there's a text selection
+  if (hasSavedSelection()) {
+    // Apply the transformation to the selected text
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const selectedText = range.toString();
+
+      let transformedText = selectedText;
+      switch (transformType) {
+        case "uppercase":
+          transformedText = selectedText.toUpperCase();
+          break;
+        case "lowercase":
+          transformedText = selectedText.toLowerCase();
+          break;
+        case "capitalize":
+          transformedText = selectedText.replace(/\b\w/g, (char) =>
+            char.toUpperCase()
+          );
+          break;
+      }
+
+      // Create a document fragment with the transformed text
+      const fragment = document.createDocumentFragment();
+      const textNode = document.createTextNode(transformedText);
+      fragment.appendChild(textNode);
+
+      // Replace the selected text with the transformed text
+      range.deleteContents();
+      range.insertNode(fragment);
+
+      // Update the selection
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(textNode);
+      selection.addRange(newRange);
+
+      // Apply the change to the element
+      directlyApplyStyle();
+    }
+  } else {
+    // If no selection, transform the entire text content
+    if (!props.element.content) return;
+
+    let transformedContent = props.element.content;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = transformedContent;
+
+    // Get all text nodes
+    const textNodes = [];
+    const walker = document.createTreeWalker(
+      tempDiv,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+
+    let node;
+    while ((node = walker.nextNode())) {
+      textNodes.push(node);
+    }
+
+    // Transform each text node
+    textNodes.forEach((node) => {
+      if (!node.textContent) return;
+
+      let transformedText = node.textContent;
+      switch (transformType) {
+        case "uppercase":
+          transformedText = node.textContent.toUpperCase();
+          break;
+        case "lowercase":
+          transformedText = node.textContent.toLowerCase();
+          break;
+        case "capitalize":
+          transformedText = node.textContent.replace(/\b\w/g, (char) =>
+            char.toUpperCase()
+          );
+          break;
+      }
+
+      node.textContent = transformedText;
+    });
+
+    // Update the element with the transformed content
+    emit("update:element", {
+      ...props.element,
+      content: tempDiv.innerHTML,
+    });
+  }
+}
+
+function clearFormatting() {
+  // Check if there's a text selection
+  if (hasSavedSelection()) {
+    // Apply the clear formatting to the selected text
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+
+      // Extract the text content without formatting
+      const selectedText = range.toString();
+
+      // Create a document fragment with just the text
+      const fragment = document.createDocumentFragment();
+      const textNode = document.createTextNode(selectedText);
+      fragment.appendChild(textNode);
+
+      // Replace the selected formatted text with plain text
+      range.deleteContents();
+      range.insertNode(fragment);
+
+      // Update the selection
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(textNode);
+      selection.addRange(newRange);
+
+      // Apply the change to the element
+      directlyApplyStyle();
+    }
+  } else {
+    // If no selection, clear formatting for the entire element
+    // Keep the text content but remove all formatting
+    if (!props.element.content) return;
+
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = props.element.content;
+
+    // Get the text content without formatting
+    const plainText = tempDiv.textContent || "";
+
+    // Update the element with plain text and default styles
+    emit("update:element", {
+      ...props.element,
+      content: plainText,
+      style: {
+        ...props.element.style,
+        fontFamily: "Roboto",
+        fontSize: 16,
+        bold: false,
+        italic: false,
+        underline: false,
+        textIndent: 0,
+        paragraphIndent: 0,
+        listType: "none",
+        align: "left",
+        color: "#000000",
+        backgroundColor: "transparent",
+        blockBackground: false,
+      },
+    });
+  }
+}
+
+function updateTextColor() {
   // Force a small delay to ensure any selection is properly saved
   setTimeout(() => {
     // Check if there's a text selection
     const hasSelection = hasSavedSelection();
-    console.log("Has saved selection for text color:", hasSelection);
 
     if (hasSelection) {
       // Apply text color to selected text only using our direct method
-      const success = directlyApplyStyle("color", textColor.value);
-      console.log(
-        "Applied text color to selection using directlyApplyStyle:",
-        success
-      );
+      directlyApplyStyle("color", textColor.value);
 
       // The content will be updated by the TextElement component's mutation observer
       // No need to manually update the element here
     } else {
       // Apply text color to the whole element
-      console.log("Applying text color to whole element:", textColor.value);
       updateElement({ color: textColor.value });
     }
   }, 0);
 }
 
 function updateBackgroundColor() {
-  console.log("TextProperties: updateBackgroundColor", backgroundColor.value);
-
   // Force a small delay to ensure any selection is properly saved
   setTimeout(() => {
     // Check if there's a text selection
     const hasSelection = hasSavedSelection();
-    console.log("Has saved selection for background color:", hasSelection);
 
     if (hasSelection && !blockBackground.value) {
       // Apply background color to selected text only using our direct method
-      const success = directlyApplyStyle(
-        "backgroundColor",
-        backgroundColor.value
-      );
-      console.log(
-        "Applied background color to selection using directlyApplyStyle:",
-        success
-      );
+      directlyApplyStyle("backgroundColor", backgroundColor.value);
 
       // The content will be updated by the TextElement component's mutation observer
       // No need to manually update the element here
     } else {
       // Apply background color to the whole element
-      console.log(
-        "Applying background color to whole element:",
-        backgroundColor.value
-      );
       updateElement({
         backgroundColor: backgroundColor.value,
         // If blockBackground is enabled, make sure it stays enabled
@@ -641,9 +940,7 @@ function selectColor(color: string) {
 }
 
 function toggleBlockBackground() {
-  console.log("TextProperties: toggleBlockBackground", blockBackground.value);
-
-  // Force immediate update of the element with the new blockBackground value
+  // Update the element with the new blockBackground value
   const updates: Partial<typeof props.element.style> = {
     blockBackground: blockBackground.value,
   };
@@ -655,45 +952,14 @@ function toggleBlockBackground() {
 
   // Apply the updates
   updateElement(updates);
-
-  // Force a re-render by updating the element again after a short delay
-  setTimeout(() => {
-    if (blockBackground.value) {
-      console.log(
-        "Forcing block background color update:",
-        blockBackgroundColor.value
-      );
-      updateElement({
-        blockBackground: true,
-        blockBackgroundColor: blockBackgroundColor.value,
-      });
-    }
-  }, 50);
 }
 
 function updateBlockBackgroundColor() {
-  console.log(
-    "TextProperties: updateBlockBackgroundColor",
-    blockBackgroundColor.value
-  );
-
   // Make sure block background is enabled and update the element with the new blockBackgroundColor value
   updateElement({
     blockBackground: true,
     blockBackgroundColor: blockBackgroundColor.value,
   });
-
-  // Force a re-render by updating the element again after a short delay
-  setTimeout(() => {
-    console.log(
-      "Forcing block background color update:",
-      blockBackgroundColor.value
-    );
-    updateElement({
-      blockBackground: true,
-      blockBackgroundColor: blockBackgroundColor.value,
-    });
-  }, 50);
 }
 
 function selectBackgroundColor(color: string) {
@@ -712,30 +978,13 @@ function selectBlockBackgroundColor(color: string) {
     blockBackground: true,
     blockBackgroundColor: color,
   });
-
-  // Force a re-render by updating the element again after a short delay
-  setTimeout(() => {
-    console.log("Forcing block background color update from preset:", color);
-    updateElement({
-      blockBackground: true,
-      blockBackgroundColor: color,
-    });
-  }, 50);
 }
 
 function applyAllColors() {
-  console.log("TextProperties: applyAllColors", {
-    textColor: textColor.value,
-    backgroundColor: backgroundColor.value,
-    blockBackground: blockBackground.value,
-    blockBackgroundColor: blockBackgroundColor.value,
-  });
-
   // Force a small delay to ensure any selection is properly saved
   setTimeout(() => {
     // Check if there's a text selection
     const hasSelection = hasSavedSelection();
-    console.log("Has saved selection for applying all colors:", hasSelection);
 
     if (hasSelection) {
       // Apply colors to selected text
@@ -749,19 +998,13 @@ function applyAllColors() {
 
 function applyColorsToSelection() {
   // Apply text color to selection
-  const textColorSuccess = applyTextColor(textColor.value);
-  console.log("Applied text color to selection:", textColorSuccess);
+  applyTextColor(textColor.value);
 
-  if (!blockBackground.value) {
-    // Apply text background color to selection
-    const bgColorSuccess = applyBackgroundColor(backgroundColor.value);
-    console.log("Applied text background color to selection:", bgColorSuccess);
-  } else {
-    // Apply text background color to selection
-    const bgColorSuccess = applyBackgroundColor(backgroundColor.value);
-    console.log("Applied text background color to selection:", bgColorSuccess);
+  // Apply text background color to selection
+  applyBackgroundColor(backgroundColor.value);
 
-    // Update the element's block background
+  // If block background is enabled, update the element's block background
+  if (blockBackground.value) {
     updateElement({
       blockBackground: true,
       blockBackgroundColor: blockBackgroundColor.value,
@@ -784,7 +1027,6 @@ function applyColorsToElement() {
   }
 
   updateElement(updates);
-  console.log("Applied all colors to whole element");
 }
 </script>
 
@@ -831,17 +1073,7 @@ function applyColorsToElement() {
   gap: 8px;
 }
 
-.color-preview {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  cursor: pointer;
-}
-
-.color-input {
-  flex: 1;
-}
+/* These classes are no longer needed with AdvancedColorPicker */
 
 .color-presets {
   margin-top: 8px;
@@ -897,5 +1129,9 @@ function applyColorsToElement() {
   color: var(--text-secondary);
   margin-top: 4px;
   text-transform: capitalize;
+}
+
+.first-line-indent {
+  margin-top: 16px;
 }
 </style>

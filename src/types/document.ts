@@ -44,6 +44,16 @@ export interface TextElement extends DocumentElement {
     color: string;
     backgroundColor: string;
     textAlign?: "left" | "center" | "right" | "justify";
+    textIndent?: number;
+    lineHeight?: number;
+    paragraphIndent?: number;
+    listType?: "none" | "bullet" | "number";
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    blockBackground?: boolean;
+    blockBackgroundColor?: string;
+    align?: "left" | "center" | "right" | "justify";
   };
 }
 

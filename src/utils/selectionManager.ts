@@ -12,13 +12,11 @@ let savedElement: HTMLElement | null = null;
 export function saveSelection(): boolean {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) {
-    console.log("No selection found");
     return false;
   }
 
   const range = selection.getRangeAt(0);
   if (range.collapsed) {
-    console.log("Selection is collapsed (no text selected)");
     return false;
   }
 
@@ -34,26 +32,18 @@ export function saveSelection(): boolean {
   }
 
   if (!element) {
-    console.log("No contenteditable element found");
     return false;
   }
 
   // Make sure the selection is within a text element
   const textElement = element.closest(".text-element");
   if (!textElement) {
-    console.log("Selection is not within a text element");
     return false;
   }
 
   // Save the selection
   savedRange = range.cloneRange();
   savedElement = element;
-
-  console.log("Selection saved", {
-    text: range.toString(),
-    element: element.tagName,
-    textElement: textElement.getAttribute("data-element-id") || "unknown",
-  });
 
   return true;
 }
@@ -66,7 +56,6 @@ export function restoreSelection(): boolean {
 
   // Don't interfere with input fields
   if (isInputActive()) {
-    console.log("Cannot restore selection: Input field is active");
     return false;
   }
 
@@ -81,10 +70,8 @@ export function restoreSelection(): boolean {
     selection.removeAllRanges();
     selection.addRange(savedRange.cloneRange());
 
-    console.log("Selection restored");
     return true;
   } catch (error) {
-    console.error("Error restoring selection:", error);
     return false;
   }
 }
@@ -113,12 +100,10 @@ export function applyFormatting(
 ): boolean {
   // Don't interfere with input fields
   if (isInputActive()) {
-    console.log("Cannot apply formatting: Input field is active");
     return false;
   }
 
   if (!savedRange || !savedElement) {
-    console.error("Cannot apply formatting: No saved selection");
     return false;
   }
 
@@ -154,7 +139,7 @@ export function applyFormatting(
         command === "backColor" ||
         command === "fontSize")
     ) {
-      console.log(`Using custom approach for multi-line ${command}`);
+      // Using custom approach for multi-line formatting
 
       // Map command to style property
       let styleProperty: string;
@@ -181,7 +166,6 @@ export function applyFormatting(
           // Save the selection again to preserve it for future operations
           saveSelection();
 
-          console.log(`Applied formatting: ${command} = ${value}`);
           return result;
       }
 
@@ -198,11 +182,10 @@ export function applyFormatting(
       // Save the selection again to preserve it for future operations
       saveSelection();
 
-      console.log(`Applied formatting: ${command} = ${value}`);
       return result;
     }
   } catch (error) {
-    console.error(`Error applying formatting ${command}:`, error);
+    // Error applying formatting
     return false;
   }
 }
@@ -240,7 +223,6 @@ export function applyFontFamily(fontFamily: string): boolean {
  */
 export function applyFontSize(fontSize: number): boolean {
   if (!savedRange || !savedElement) {
-    console.error("Cannot apply font size: No saved selection");
     return false;
   }
 
@@ -261,7 +243,6 @@ export function applyFontSize(fontSize: number): boolean {
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error("Invalid selection range");
       return false;
     }
 
@@ -270,7 +251,7 @@ export function applyFontSize(fontSize: number): boolean {
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log("Is multi-line selection for font size:", isMultiLine);
+    // Check if selection spans multiple lines
 
     // Use our improved multi-line handler for all selections
     // This will try multiple approaches in order of reliability
@@ -287,7 +268,7 @@ export function applyFontSize(fontSize: number): boolean {
     }
 
     // If all else fails, try the most basic approach
-    console.log("All methods failed, trying basic execCommand as last resort");
+    // Try basic execCommand as last resort
     document.execCommand("styleWithCSS", false, "true");
     const basicResult = document.execCommand("fontSize", false, "7"); // 7 is the largest size
 
@@ -309,16 +290,13 @@ export function applyFontSize(fontSize: number): boolean {
         }
       });
 
-      console.log(`Applied font size: ${fontSize}px using basic execCommand`);
       // Save the selection again to preserve it for future operations
       saveSelection();
       return true;
     }
 
-    console.error("Failed to apply font size");
     return false;
   } catch (error) {
-    console.error(`Error applying font size:`, error);
     return false;
   }
 }
@@ -328,7 +306,6 @@ export function applyFontSize(fontSize: number): boolean {
  */
 export function applyTextColor(color: string): boolean {
   if (!savedRange || !savedElement) {
-    console.error("Cannot apply text color: No saved selection");
     return false;
   }
 
@@ -358,7 +335,7 @@ export function applyTextColor(color: string): boolean {
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log("Is multi-line selection for text color:", isMultiLine);
+    // Check if selection spans multiple lines
 
     // Use our improved multi-line handler for all selections
     // This will try multiple approaches in order of reliability
@@ -371,21 +348,18 @@ export function applyTextColor(color: string): boolean {
     }
 
     // If all else fails, try the most basic approach
-    console.log("All methods failed, trying basic execCommand as last resort");
+    // Try basic execCommand as last resort
     document.execCommand("styleWithCSS", false, "true");
     const basicResult = document.execCommand("foreColor", false, color);
 
     if (basicResult) {
-      console.log(`Applied text color: ${color} using basic execCommand`);
       // Save the selection again to preserve it for future operations
       saveSelection();
       return true;
     }
 
-    console.error("Failed to apply text color");
     return false;
   } catch (error) {
-    console.error(`Error applying text color:`, error);
     return false;
   }
 }
@@ -395,7 +369,6 @@ export function applyTextColor(color: string): boolean {
  */
 export function applyBackgroundColor(color: string): boolean {
   if (!savedRange || !savedElement) {
-    console.error("Cannot apply background color: No saved selection");
     return false;
   }
 
@@ -416,7 +389,6 @@ export function applyBackgroundColor(color: string): boolean {
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error("Invalid selection range");
       return false;
     }
 
@@ -425,7 +397,7 @@ export function applyBackgroundColor(color: string): boolean {
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log("Is multi-line selection for background color:", isMultiLine);
+    // Check if selection spans multiple lines
 
     // Use our improved multi-line handler for all selections
     // This will try multiple approaches in order of reliability
@@ -442,21 +414,18 @@ export function applyBackgroundColor(color: string): boolean {
     }
 
     // If all else fails, try the most basic approach
-    console.log("All methods failed, trying basic execCommand as last resort");
+    // Try basic execCommand as last resort
     document.execCommand("styleWithCSS", false, "true");
     const basicResult = document.execCommand("backColor", false, color);
 
     if (basicResult) {
-      console.log(`Applied background color: ${color} using basic execCommand`);
       // Save the selection again to preserve it for future operations
       saveSelection();
       return true;
     }
 
-    console.error("Failed to apply background color");
     return false;
   } catch (error) {
-    console.error(`Error applying background color:`, error);
     return false;
   }
 }
@@ -469,7 +438,6 @@ export function applyTextAndBackgroundColor(
   backgroundColor: string
 ): boolean {
   if (!savedRange || !savedElement) {
-    console.error("Cannot apply colors: No saved selection");
     return false;
   }
 
@@ -490,7 +458,6 @@ export function applyTextAndBackgroundColor(
 
     // Make sure we have a valid selection
     if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
-      console.error("Invalid selection range");
       return false;
     }
 
@@ -499,7 +466,7 @@ export function applyTextAndBackgroundColor(
 
     // Check if the selection spans multiple blocks/paragraphs
     const isMultiLine = isMultiLineSelection(currentRange);
-    console.log("Is multi-line selection for combined colors:", isMultiLine);
+    // Check if selection spans multiple lines
 
     // Try to apply both styles at once using a single span
     try {
@@ -526,13 +493,9 @@ export function applyTextAndBackgroundColor(
         // Update our saved range
         savedRange = newRange.cloneRange();
 
-        console.log(`Applied both colors using surroundContents`);
         return true;
       } catch (error) {
-        console.error(
-          "surroundContents failed for combined colors, trying separate applications:",
-          error
-        );
+        // surroundContents failed, trying separate applications
 
         // If surroundContents fails, apply colors separately
         // First apply text color
@@ -547,10 +510,9 @@ export function applyTextAndBackgroundColor(
         return false;
       }
     } catch (error) {
-      console.error("Error applying combined colors:", error);
+      // Error applying combined colors
 
-      // If all else fails, try applying colors separately
-      console.log("Trying to apply colors separately as fallback");
+      // If all else fails, try applying colors separately as fallback
 
       // First apply text color
       const textColorSuccess = applyTextColor(textColor);
@@ -564,7 +526,6 @@ export function applyTextAndBackgroundColor(
       return false;
     }
   } catch (error) {
-    console.error(`Error applying colors:`, error);
     return false;
   }
 }
@@ -696,14 +657,7 @@ export function isMultiLineSelection(range: Range): boolean {
       }
     }
 
-    console.log("Selection analysis:", {
-      containsNewlines,
-      containsBlockElements,
-      containsLineBreaks,
-      spansMultipleNodes,
-      spansMultipleParagraphs,
-      text: text.substring(0, 50) + (text.length > 50 ? "..." : ""),
-    });
+    // Selection analysis complete
 
     return (
       containsNewlines ||
@@ -712,7 +666,6 @@ export function isMultiLineSelection(range: Range): boolean {
       spansMultipleParagraphs
     );
   } catch (error) {
-    console.error("Error in isMultiLineSelection:", error);
     // If there's an error, assume it's not a multi-line selection
     return false;
   }
@@ -782,10 +735,6 @@ export function applyStyleToMultiLineSelection(
       }
 
       if (result) {
-        console.log(
-          `Applied ${styleProperty}: ${value} to selection using execCommand`
-        );
-
         // Save the selection again to preserve it for future operations
         saveSelection();
 
