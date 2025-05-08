@@ -43,6 +43,7 @@ import {
 import { DocumentElement, Size, Position } from "../../../types/document";
 import { saveSelection } from "../../../utils/selectionManager";
 import ResizeHandles from "../../editor/ResizeHandles.vue";
+import { getFontFamilyValue } from "../../../utils/fontFamilies";
 
 const props = defineProps<{
   element: DocumentElement;
@@ -98,7 +99,7 @@ const elementStyle = computed(() => {
 const textStyle = computed(() => {
   const style = props.element.style || {};
   return {
-    fontFamily: style.fontFamily || "Roboto",
+    fontFamily: getFontFamilyValue(style.fontFamily || "Roboto"),
     fontSize: `${style.fontSize || 16}px`,
     fontWeight: style.bold ? "bold" : "normal",
     fontStyle: style.italic ? "italic" : "normal",

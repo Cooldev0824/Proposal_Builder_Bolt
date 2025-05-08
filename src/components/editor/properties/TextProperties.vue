@@ -21,17 +21,50 @@
       @update:model-value="updateTextStyle"
     ></v-select>
 
-    <v-select
-      v-model="fontFamily"
-      label="Font Family"
-      :items="['Roboto', 'Arial', 'Times New Roman', 'Georgia']"
-      density="compact"
-      variant="outlined"
-      hide-details
-      class="mb-4"
-      @blur="updateFontFamily"
-      @change="updateFontFamily"
-    ></v-select>
+    <div class="font-family-section mb-4">
+      <v-select
+        v-model="fontFamily"
+        label="Font Family"
+        :items="fontFamilyItems"
+        item-title="name"
+        item-value="value"
+        return-object
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="mb-2"
+        @blur="updateFontFamily"
+        @change="updateFontFamily"
+      >
+        <template v-slot:selection="{ item }">
+          <span :style="{ fontFamily: getFontFamilyValue(item.raw.value) }">
+            {{ item.raw.name }}
+          </span>
+        </template>
+        <template v-slot:item="{ item, props }">
+          <v-list-item
+            v-bind="props"
+            :title="item.raw.name"
+            :style="{ fontFamily: getFontFamilyValue(item.raw.value) }"
+          ></v-list-item>
+        </template>
+      </v-select>
+
+      <!-- Font preview -->
+      <div
+        class="font-preview"
+        :style="{
+          fontFamily: getFontFamilyValue(fontFamily?.value || 'Roboto'),
+        }"
+      >
+        <div class="font-preview-text">
+          The quick brown fox jumps over the lazy dog
+        </div>
+        <div class="font-preview-category">
+          {{ fontFamily?.category || "sans-serif" }}
+        </div>
+      </div>
+    </div>
 
     <v-text-field
       v-model.number="fontSize"
@@ -248,7 +281,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import type { DocumentElement } from "../../../types/document";
 import {
   hasSavedSelection,
@@ -263,6 +296,11 @@ import {
   applyTextAndBackgroundColor,
   directlyApplyStyle,
 } from "../../../utils/selectionManager";
+import {
+  FONT_FAMILIES,
+  FontFamily,
+  getFontFamilyValue as getFontFamilyValueUtil,
+} from "../../../utils/fontFamilies";
 
 const props = defineProps<{
   element: DocumentElement;
@@ -273,7 +311,13 @@ const emit = defineEmits<{
 }>();
 
 const textStyle = ref(props.element.style?.textStyle || "Paragraph");
-const fontFamily = ref(props.element.style?.fontFamily || "Roboto");
+
+// Get the initial font family object from the element or default to Roboto
+const initialFontFamily = props.element.style?.fontFamily || "Roboto";
+const fontFamilyObject =
+  FONT_FAMILIES.find((f) => f.value === initialFontFamily) || FONT_FAMILIES[0];
+const fontFamily = ref(fontFamilyObject);
+
 const fontSize = ref(props.element.style?.fontSize || 16);
 const bold = ref(props.element.style?.bold || false);
 const italic = ref(props.element.style?.italic || false);
@@ -287,6 +331,35 @@ const blockBackground = ref(props.element.style?.blockBackground || false);
 const blockBackgroundColor = ref(
   props.element.style?.blockBackgroundColor || "#f5f5f5"
 );
+
+// Group font families by category for the dropdown
+const fontFamilyItems = computed(() => {
+  // Create a copy of the font families array to avoid modifying the original
+  const fonts = [...FONT_FAMILIES];
+
+  // Sort fonts by category and then by name
+  fonts.sort((a, b) => {
+    if (a.category !== b.category) {
+      // Order categories: sans-serif, serif, monospace, display, handwriting
+      const categoryOrder = {
+        "sans-serif": 1,
+        serif: 2,
+        monospace: 3,
+        display: 4,
+        handwriting: 5,
+      };
+      return categoryOrder[a.category] - categoryOrder[b.category];
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return fonts;
+});
+
+// Function to get the full font family value with fallbacks
+function getFontFamilyValue(fontName: string): string {
+  return getFontFamilyValueUtil(fontName);
+}
 
 // Color picker visibility
 const showTextColorPicker = ref(false);
@@ -323,7 +396,14 @@ watch(
   () => props.element,
   (newValue) => {
     textStyle.value = newValue.style?.textStyle || "Paragraph";
-    fontFamily.value = newValue.style?.fontFamily || "Roboto";
+
+    // Update font family object when element changes
+    const newFontFamilyValue = newValue.style?.fontFamily || "Roboto";
+    const newFontFamilyObject =
+      FONT_FAMILIES.find((f) => f.value === newFontFamilyValue) ||
+      FONT_FAMILIES[0];
+    fontFamily.value = newFontFamilyObject;
+
     fontSize.value = newValue.style?.fontSize || 16;
     bold.value = newValue.style?.bold || false;
     italic.value = newValue.style?.italic || false;
@@ -424,11 +504,19 @@ function updateTextStyle() {
 }
 
 function updateFontFamily() {
-  console.log("TextProperties: updateFontFamily");
+  console.log("TextProperties: updateFontFamily", fontFamily.value);
+
+  if (!fontFamily.value) {
+    console.warn("No font family selected");
+    return;
+  }
+
   if (hasSavedSelection()) {
-    applyFontFamily(fontFamily.value);
+    // Apply to selection - pass the font family value
+    applyFontFamily(fontFamily.value.value);
   } else {
-    updateElement({ fontFamily: fontFamily.value });
+    // Update the whole element - store just the font family value string
+    updateElement({ fontFamily: fontFamily.value.value });
   }
 }
 
@@ -800,5 +888,33 @@ function applyColorsToElement() {
 .apply-all-btn {
   width: 100%;
   margin-top: 4px;
+}
+
+.font-family-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.font-preview {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--surface);
+}
+
+.font-preview-text {
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.font-preview-category {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  text-transform: capitalize;
 }
 </style>
