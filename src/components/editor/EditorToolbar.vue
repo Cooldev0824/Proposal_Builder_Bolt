@@ -142,7 +142,7 @@
     <v-spacer></v-spacer>
 
     <div class="toolbar-group">
-      <v-btn
+      <!-- <v-btn
         icon
         @click="toggleRuler"
         size="small"
@@ -150,8 +150,8 @@
       >
         <v-icon>mdi-ruler</v-icon>
         <v-tooltip activator="parent" location="bottom">Toggle Ruler</v-tooltip>
-      </v-btn>
-      <v-btn
+      </v-btn> -->
+      <!-- <v-btn
         icon
         @click="toggleGrid"
         size="small"
@@ -159,7 +159,7 @@
       >
         <v-icon>mdi-grid</v-icon>
         <v-tooltip activator="parent" location="bottom">Toggle Grid</v-tooltip>
-      </v-btn>
+      </v-btn> -->
       <v-btn icon @click="$emit('tool-clicked', 'zoom-in')" size="small">
         <v-icon>mdi-magnify-plus</v-icon>
         <v-tooltip activator="parent" location="bottom">Zoom In</v-tooltip>

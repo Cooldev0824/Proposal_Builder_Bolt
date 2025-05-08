@@ -94,7 +94,8 @@ const pageHeight = computed(() => {
 const pageStyle = computed(() => {
   return {
     width: `${pageWidth.value}px`,
-    minHeight: `${pageHeight.value}px`,
+    height: `${pageHeight.value}px`, // Use fixed height instead of minHeight
+    overflow: "hidden", // Hide content that goes outside the document boundaries
   };
 });
 
@@ -184,18 +185,22 @@ function closePreview() {
   margin: 16px auto;
   position: relative;
   box-sizing: border-box;
+  overflow: hidden; /* Hide content that goes outside the document boundaries */
 
   .page-content {
     position: relative;
-    min-height: 100%;
-    padding: 24px;
+    height: 100%; /* Use fixed height instead of min-height */
+    //padding: 24px;
     background-color: white;
     box-sizing: border-box;
+    overflow: hidden; /* Hide content that goes outside the document boundaries */
   }
 
   .elements-container {
     position: relative;
-    min-height: inherit;
+    height: 100%; /* Use fixed height instead of min-height */
+    width: 100%;
+    overflow: hidden; /* Hide content that goes outside the document boundaries */
   }
 }
 </style>

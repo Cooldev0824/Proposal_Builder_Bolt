@@ -347,7 +347,7 @@ export async function directExportToPdf(
       contentDiv.className = "page-content";
       contentDiv.style.position = "relative";
       contentDiv.style.height = `${paperSizeObj.height}px`;
-      contentDiv.style.padding = "24px";
+      // contentDiv.style.padding = "24px";
       contentDiv.style.backgroundColor = "white";
       contentDiv.style.boxSizing = "border-box";
       contentDiv.style.overflow = "hidden"; // Ensure content doesn't exceed the page
