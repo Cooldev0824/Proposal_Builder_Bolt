@@ -95,97 +95,98 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { DocumentElement } from '../../types/document'
-import TextProperties from './properties/TextProperties.vue'
-import ImageProperties from './properties/ImageProperties.vue'
-import ShapeProperties from './properties/ShapeProperties.vue'
-import TableProperties from './properties/TableProperties.vue'
-import SignatureProperties from './properties/SignatureProperties.vue'
-import FormProperties from './properties/FormProperties.vue'
+import { ref, computed, watch } from "vue";
+import { DocumentElement } from "../../types/document";
+import TextProperties from "./properties/TextProperties.vue";
+import ImageProperties from "./properties/ImageProperties.vue";
+import ShapeProperties from "./properties/ShapeProperties.vue";
+import TableProperties from "./properties/TableProperties.vue";
+import FormProperties from "./properties/FormProperties.vue";
 
 const props = defineProps<{
-  selectedElement: DocumentElement | null
-}>()
+  selectedElement: DocumentElement | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:element', element: DocumentElement): void
-  (e: 'delete-element', element: DocumentElement): void
-  (e: 'duplicate-element', element: DocumentElement): void
-  (e: 'close'): void
-}>()
+  (e: "update:element", element: DocumentElement): void;
+  (e: "delete-element", element: DocumentElement): void;
+  (e: "duplicate-element", element: DocumentElement): void;
+  (e: "close"): void;
+}>();
 
-const position = ref({ x: 0, y: 0 })
-const size = ref({ width: 0, height: 0 })
+const position = ref({ x: 0, y: 0 });
+const size = ref({ width: 0, height: 0 });
 
-watch(() => props.selectedElement, (newValue) => {
-  if (newValue) {
-    position.value = { ...newValue.position }
-    size.value = { ...newValue.size }
-  }
-}, { immediate: true, deep: true })
+watch(
+  () => props.selectedElement,
+  (newValue) => {
+    if (newValue) {
+      position.value = { ...newValue.position };
+      size.value = { ...newValue.size };
+    }
+  },
+  { immediate: true, deep: true }
+);
 
 function getPropertiesComponent(type: string) {
   switch (type) {
-    case 'text':
-      return TextProperties
-    case 'image':
-      return ImageProperties
-    case 'shape':
-      return ShapeProperties
-    case 'table':
-      return TableProperties
-    case 'signature':
-      return SignatureProperties
-    case 'form':
-      return FormProperties
+    case "text":
+      return TextProperties;
+    case "image":
+      return ImageProperties;
+    case "shape":
+      return ShapeProperties;
+    case "table":
+      return TableProperties;
+    case "form":
+      return FormProperties;
     default:
-      return null
+      return null;
   }
 }
 
 function formatElementType(type: string): string {
-  return type.charAt(0).toUpperCase() + type.slice(1) + ' Element'
+  return type.charAt(0).toUpperCase() + type.slice(1) + " Element";
 }
 
 function updatePosition() {
-  if (!props.selectedElement) return
+  if (!props.selectedElement) return;
 
   const updatedElement = {
     ...props.selectedElement,
-    position: { ...position.value }
-  }
+    position: { ...position.value },
+  };
 
-  emit('update:element', updatedElement)
+  emit("update:element", updatedElement);
 }
 
 function updateSize() {
-  if (!props.selectedElement) return
+  if (!props.selectedElement) return;
 
   const updatedElement = {
     ...props.selectedElement,
-    size: { ...size.value }
-  }
+    size: { ...size.value },
+  };
 
-  emit('update:element', updatedElement)
+  emit("update:element", updatedElement);
 }
 
 function updateElement(element: DocumentElement) {
-  emit('update:element', element)
+  emit("update:element", element);
 }
 
 function deleteElement() {
-  if (!props.selectedElement) return
-  emit('delete-element', props.selectedElement)
+  if (!props.selectedElement) return;
+  emit("delete-element", props.selectedElement);
 }
 
 function duplicateElement() {
-  if (!props.selectedElement) return
-  emit('duplicate-element', props.selectedElement)
+  if (!props.selectedElement) return;
+  emit("duplicate-element", props.selectedElement);
 }
 
 function closePanel() {
-  emit('close')
+  emit("close");
 }
 </script>
 
