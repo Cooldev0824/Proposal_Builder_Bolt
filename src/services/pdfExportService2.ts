@@ -58,7 +58,7 @@ export async function exportToPdf(
     paperSize = getLandscapeSize(paperSize);
   }
 
-  // Create PDF with the correct paper size and orientation
+  // Create PDF with the correct paper size and orientation - no space for rulers
   const pdfOrientation = orientation === "landscape" ? "l" : "p";
   const pdf = new jsPDF({
     orientation: pdfOrientation,
@@ -141,7 +141,7 @@ export async function exportToPdf(
         });
       });
 
-      // Render the page to canvas
+      // Render the page to canvas - capture only the content area, no ruler space
       const canvas = await html2canvas(pageClone, {
         scale: mergedOptions.quality || 2,
         useCORS: true,
@@ -149,15 +149,26 @@ export async function exportToPdf(
         logging: false,
         backgroundColor: mergedOptions.includeBackground ? "white" : null,
         imageTimeout: 0,
-        width: paperSize.width,
-        height: paperSize.height,
+        width: paperSize.width - 30, // Subtract ruler width
+        height: paperSize.height - 30, // Subtract ruler height
         x: 0,
         y: 0,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: paperSize.width + 50,
-        windowHeight: paperSize.height + 50,
+        windowWidth: paperSize.width,
+        windowHeight: paperSize.height,
         foreignObjectRendering: false,
+        // Ignore rulers and grid overlays
+        ignoreElements: (element) => {
+          return (
+            element.classList.contains("grid-overlay") ||
+            element.classList.contains("ruler") ||
+            element.classList.contains("horizontal-ruler") ||
+            element.classList.contains("vertical-ruler") ||
+            element.classList.contains("grid-corner") ||
+            element.classList.contains("rulers-container")
+          );
+        },
         onclone: (clonedDoc) => {
           // Process images to ensure they're displayed at natural size and cropped
           const images = clonedDoc.querySelectorAll("img");
@@ -310,7 +321,7 @@ export async function exportToPdf(
         offsetY = marginTop;
       }
 
-      // Add the image to the PDF
+      // Add the image to the PDF - no extra space for rulers
       pdf.addImage(
         canvas.toDataURL("image/png"),
         "PNG",
@@ -373,36 +384,45 @@ export async function directExportToPdf(
       paperSizeObj = getLandscapeSize(paperSizeObj);
     }
 
+    // No need to adjust paper size for rulers as we're adjusting element positions instead
+
     // Create a preview page for each section
     for (const section of docData.sections) {
-      // Create the page container
+      // Create the page container - with NO space for rulers
       const pageDiv = document.createElement("div");
       pageDiv.className = "preview-page";
-      pageDiv.style.width = `${paperSizeObj.width}px`;
-      pageDiv.style.height = `${paperSizeObj.height}px`; // Fixed height instead of minHeight
+      // Subtract 30px from width and height to account for ruler space
+      pageDiv.style.width = `${paperSizeObj.width - 30}px`;
+      pageDiv.style.height = `${paperSizeObj.height - 30}px`; // Fixed height instead of minHeight
       pageDiv.style.backgroundColor = "white";
       pageDiv.style.position = "relative";
       pageDiv.style.boxSizing = "border-box";
-      pageDiv.style.margin = "16px auto";
+      pageDiv.style.margin = "0"; // No margin
+      pageDiv.style.padding = "0"; // No padding
       pageDiv.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
       pageDiv.style.overflow = "hidden"; // Ensure content doesn't exceed the page
 
-      // Create the page content container
+      // Create the page content container - with NO space for rulers
       const contentDiv = document.createElement("div");
       contentDiv.className = "page-content";
       contentDiv.style.position = "relative";
-      contentDiv.style.height = `${paperSizeObj.height}px`;
-      // contentDiv.style.padding = "24px";
+      // Subtract 30px from width and height to account for ruler space
+      contentDiv.style.height = `${paperSizeObj.height - 30}px`;
+      contentDiv.style.width = `${paperSizeObj.width - 30}px`;
+      contentDiv.style.padding = "0"; // No padding
+      contentDiv.style.margin = "0"; // No margin
       contentDiv.style.backgroundColor = "white";
       contentDiv.style.boxSizing = "border-box";
       contentDiv.style.overflow = "hidden"; // Ensure content doesn't exceed the page
 
-      // Create the elements container
+      // Create the elements container - with NO space for rulers
       const elementsDiv = document.createElement("div");
       elementsDiv.className = "elements-container";
       elementsDiv.style.position = "relative";
       elementsDiv.style.height = "100%";
       elementsDiv.style.width = "100%";
+      elementsDiv.style.padding = "0"; // No padding
+      elementsDiv.style.margin = "0"; // No margin
       elementsDiv.style.overflow = "hidden"; // Ensure elements don't overflow
 
       // Sort elements by zIndex
@@ -414,11 +434,13 @@ export async function directExportToPdf(
 
       // Add each element to the page
       for (const element of sortedElements) {
-        // Create a container for the element
+        // Create a container for the element - adjust positions to remove ruler space
         const elementContainer = document.createElement("div");
         elementContainer.style.position = "absolute";
-        elementContainer.style.left = `${element.position.x}px`;
-        elementContainer.style.top = `${element.position.y}px`;
+
+        // Explicitly subtract 30px from both x and y to remove ruler space
+        elementContainer.style.left = `${Math.max(0, element.position.x - 30)}px`;
+        elementContainer.style.top = `${Math.max(0, element.position.y - 30)}px`;
         elementContainer.style.width = `${element.size.width}px`;
         elementContainer.style.height = `${element.size.height}px`;
         elementContainer.style.zIndex = `${element.zIndex || 0}`;
@@ -815,12 +837,14 @@ export async function directExportToPdf(
  * @param pageElement The page element to process
  */
 function processPageForExport(pageElement: HTMLElement): void {
-  // Hide UI controls that shouldn't appear in the PDF
+  // Hide UI controls and rulers that shouldn't appear in the PDF
   const uiElements = pageElement.querySelectorAll(
     ".resize-handle, .scroll-control, .v-navigation-drawer, " +
       ".v-overlay, .v-menu, .v-btn--icon, button, " +
       "[role='button'], .control-button, .handle, " +
-      ".v-slider, .v-input__control"
+      ".v-slider, .v-input__control, " +
+      ".grid-overlay, .ruler, .horizontal-ruler, .vertical-ruler, " +
+      ".grid-corner, .rulers-container"
   );
 
   uiElements.forEach((el) => {

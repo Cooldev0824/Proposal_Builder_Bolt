@@ -1,16 +1,21 @@
 <template>
-  <div class="document-page" :class="{ active: isActive }" :style="pageStyle">
+  <div class="document-page-container">
+    <!-- Grid overlay with rulers positioned outside the page -->
     <GridOverlay
       :visible="showGrid"
       :width="pageWidth"
       :height="pageHeight"
       :grid-size="gridSize"
       @toggle-grid="toggleGrid"
+      class="rulers-container"
     />
-    <div class="page-content" ref="pageContent">
-      <Suspense v-if="section?.elements && Array.isArray(section.elements)">
-        <template #default>
-          <div class="elements-container">
+
+    <!-- Actual document page without padding for rulers -->
+    <div class="document-page" :class="{ active: isActive }" :style="pageStyle">
+      <div class="page-content" ref="pageContent">
+        <Suspense v-if="section?.elements && Array.isArray(section.elements)">
+          <template #default>
+            <div class="elements-container">
             <div
               v-for="(element, index) in sortedElements"
               :key="element.id"
@@ -75,6 +80,7 @@
         }"
       ></div>
     </div>
+  </div>
   </div>
 </template>
 
@@ -333,14 +339,27 @@ onErrorCaptured((error, instance, info) => {
 </script>
 
 <style scoped lang="scss">
+.document-page-container {
+  position: relative;
+  margin: 16px auto;
+  /* Container for both the rulers and the document page */
+}
+
+.rulers-container {
+  /* Position the rulers container relative to the document-page-container */
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
 .document-page {
   background-color: var(--background);
   box-shadow: var(--shadow-md);
-  margin: 16px auto;
   transition: transform 0.2s ease;
   position: relative;
-  padding-top: 30px; /* Space for horizontal ruler */
-  padding-left: 30px; /* Space for vertical ruler */
+  /* No margin or padding needed as rulers are outside */
 
   &.active {
     transform: translateY(-2px);
