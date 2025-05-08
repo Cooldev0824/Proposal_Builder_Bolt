@@ -288,8 +288,22 @@ onMounted(async () => {
   if (documentId) {
     const loadedDoc = await documentStore.getDocument(documentId);
     if (loadedDoc) {
+      console.log("Loaded document:", {
+        id: loadedDoc.id,
+        title: loadedDoc.title,
+        paperSize: loadedDoc.paperSize,
+        orientation: loadedDoc.orientation,
+      });
+
       Object.assign(document, loadedDoc);
       historyStore.pushState(document);
+
+      console.log("Document after loading:", {
+        id: document.id,
+        title: document.title,
+        paperSize: document.paperSize,
+        orientation: document.orientation,
+      });
     }
   } else {
     document.sections = [
@@ -300,6 +314,13 @@ onMounted(async () => {
       },
     ];
     historyStore.pushState(document);
+
+    console.log("New document created:", {
+      id: document.id,
+      title: document.title,
+      paperSize: document.paperSize,
+      orientation: document.orientation,
+    });
   }
 
   // Reset loading flag and unsaved changes flag
@@ -1146,12 +1167,26 @@ async function performSave() {
       createdAt: document.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       sections: document.sections,
+      paperSize: document.paperSize,
+      orientation: document.orientation,
     };
 
-    console.log("Saving document to localStorage:", documentToSave.title);
+    console.log("Saving document:", {
+      id: documentToSave.id,
+      title: documentToSave.title,
+      paperSize: documentToSave.paperSize,
+      orientation: documentToSave.orientation,
+    });
 
     // Save the document
     const savedDocument = await documentStore.saveDocument(documentToSave);
+
+    console.log("Document saved successfully:", {
+      id: savedDocument.id,
+      title: savedDocument.title,
+      paperSize: savedDocument.paperSize,
+      orientation: savedDocument.orientation,
+    });
 
     // Update the document with the saved version
     Object.assign(document, savedDocument);
