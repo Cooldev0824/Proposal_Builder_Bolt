@@ -58,16 +58,21 @@
       @update:model-value="updateBorderWidth"
     ></v-text-field>
 
-    <v-text-field
-      v-model="borderColor"
-      label="Border Color"
-      type="color"
-      density="compact"
-      variant="outlined"
-      hide-details
-      class="mb-4"
-      @update:model-value="updateBorderColor"
-    ></v-text-field>
+    <div class="mb-4">
+      <label class="color-label">Border Color</label>
+      <AdvancedColorPicker
+        v-model="borderColor"
+        @update:model-value="updateBorderColor"
+      />
+    </div>
+
+    <div class="mb-4">
+      <label class="color-label">Background Color</label>
+      <AdvancedColorPicker
+        v-model="backgroundColor"
+        @update:model-value="updateBackgroundColor"
+      />
+    </div>
 
     <v-slider
       v-model="opacity"
@@ -100,6 +105,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import type { DocumentElement } from "../../../types/document";
+import AdvancedColorPicker from "../AdvancedColorPicker.vue";
 
 const props = defineProps<{
   element: DocumentElement;
@@ -115,6 +121,7 @@ const objectFit = ref(props.element.style?.objectFit || "cover");
 const borderRadius = ref(props.element.style?.borderRadius || 0);
 const borderWidth = ref(props.element.style?.borderWidth || 0);
 const borderColor = ref(props.element.style?.borderColor || "#000000");
+const backgroundColor = ref(props.element.style?.backgroundColor || "");
 const opacity = ref(props.element.style?.opacity || 1);
 
 const sampleImages = [
@@ -152,6 +159,7 @@ watch(
     borderRadius.value = newValue.style?.borderRadius || 0;
     borderWidth.value = newValue.style?.borderWidth || 0;
     borderColor.value = newValue.style?.borderColor || "#000000";
+    backgroundColor.value = newValue.style?.backgroundColor || "";
     opacity.value = newValue.style?.opacity || 1;
   },
   { deep: true }
@@ -178,6 +186,7 @@ function updateAllProperties() {
     borderRadius: borderRadius.value,
     borderWidth: borderWidth.value,
     borderColor: borderColor.value,
+    backgroundColor: backgroundColor.value,
     opacity: opacity.value,
   };
 
@@ -198,6 +207,7 @@ function updateImageUrl() {
       borderRadius: borderRadius.value,
       borderWidth: borderWidth.value,
       borderColor: borderColor.value,
+      backgroundColor: backgroundColor.value,
       opacity: opacity.value,
     },
   });
@@ -220,6 +230,10 @@ function updateBorderColor() {
   updateAllProperties();
 }
 
+function updateBackgroundColor() {
+  updateAllProperties();
+}
+
 function updateOpacity() {
   updateAllProperties();
 }
@@ -232,6 +246,12 @@ function selectSampleImage(url: string) {
 </script>
 
 <style scoped lang="scss">
+.color-label {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  margin-bottom: 4px;
+}
+
 .image-preview {
   width: 100%;
   height: 150px;

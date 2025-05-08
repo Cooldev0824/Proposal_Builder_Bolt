@@ -151,45 +151,29 @@
       <div class="property-group-subtitle mb-2">Colors</div>
 
       <div class="color-row mb-2">
-        <div class="color-input-group">
-          <label class="color-label">Text Color</label>
-          <div class="color-input-wrapper">
-            <div
-              class="color-preview"
-              :style="{ backgroundColor: textColor }"
-              @click="showTextColorPicker = !showTextColorPicker"
-            ></div>
-            <v-text-field
-              v-model="textColor"
-              type="color"
-              density="compact"
-              variant="outlined"
-              hide-details
-              class="color-input"
-              @blur="updateTextColor"
-              @change="updateTextColor"
-            ></v-text-field>
+        <!-- First Layer -->
+        <div class="color-layer">
+          <div class="color-input-group">
+            <label class="color-label">Text Color</label>
+            <div class="color-input-wrapper">
+              <AdvancedColorPicker
+                v-model="textColor"
+                @update:model-value="updateTextColor"
+              />
+            </div>
           </div>
         </div>
 
-        <div class="color-input-group">
-          <label class="color-label">Background</label>
-          <div class="color-input-wrapper">
-            <div
-              class="color-preview"
-              :style="{ backgroundColor: backgroundColor }"
-              @click="showBgColorPicker = !showBgColorPicker"
-            ></div>
-            <v-text-field
-              v-model="backgroundColor"
-              type="color"
-              density="compact"
-              variant="outlined"
-              hide-details
-              class="color-input"
-              @blur="updateBackgroundColor"
-              @change="updateBackgroundColor"
-            ></v-text-field>
+        <!-- Second Layer -->
+        <div class="color-layer">
+          <div class="color-input-group">
+            <label class="color-label">Background</label>
+            <div class="color-input-wrapper">
+              <AdvancedColorPicker
+                v-model="backgroundColor"
+                @update:model-value="updateBackgroundColor"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -208,21 +192,10 @@
         <div class="color-input-group">
           <label class="color-label">Block Background Color</label>
           <div class="color-input-wrapper">
-            <div
-              class="color-preview"
-              :style="{ backgroundColor: blockBackgroundColor }"
-              @click="showBlockBgColorPicker = !showBlockBgColorPicker"
-            ></div>
-            <v-text-field
+            <AdvancedColorPicker
               v-model="blockBackgroundColor"
-              type="color"
-              density="compact"
-              variant="outlined"
-              hide-details
-              class="color-input"
-              @blur="updateBlockBackgroundColor"
-              @change="updateBlockBackgroundColor"
-            ></v-text-field>
+              @update:model-value="updateBlockBackgroundColor"
+            />
           </div>
         </div>
       </div>
@@ -301,6 +274,7 @@ import {
   FontFamily,
   getFontFamilyValue as getFontFamilyValueUtil,
 } from "../../../utils/fontFamilies";
+import AdvancedColorPicker from "../AdvancedColorPicker.vue";
 
 const props = defineProps<{
   element: DocumentElement;
@@ -829,7 +803,14 @@ function applyColorsToElement() {
 
 .color-row {
   display: flex;
-  gap: 8px;
+  flex-direction: column; /* Stack items vertically */
+  gap: 8px; /* Add spacing between layers */
+}
+
+.color-layer {
+  display: flex;
+  flex-direction: column; /* Ensure each layer is vertical */
+  align-items: flex-start; /* Align labels and inputs to the left */
 }
 
 .color-input-group {

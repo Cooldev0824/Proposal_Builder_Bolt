@@ -38,41 +38,32 @@
         @update:model-value="updateStrokeWidth"
       ></v-text-field>
 
-      <v-text-field
-        v-model="strokeColor"
-        label="Line Color"
-        type="color"
-        density="compact"
-        variant="outlined"
-        hide-details
-        class="mb-4"
-        @update:model-value="updateStrokeColor"
-      ></v-text-field>
+      <div class="mb-4">
+        <label class="color-label">Line Color</label>
+        <AdvancedColorPicker
+          v-model="strokeColor"
+          @update:model-value="updateStrokeColor"
+        />
+      </div>
     </template>
 
     <template v-else>
       <div class="color-inputs">
-        <v-text-field
-          v-model="fillColor"
-          label="Fill Color"
-          type="color"
-          density="compact"
-          variant="outlined"
-          hide-details
-          class="mb-4"
-          @update:model-value="updateFillColor"
-        ></v-text-field>
+        <div class="mb-4">
+          <label class="color-label">Fill Color</label>
+          <AdvancedColorPicker
+            v-model="fillColor"
+            @update:model-value="updateFillColor"
+          />
+        </div>
 
-        <v-text-field
-          v-model="strokeColor"
-          label="Stroke Color"
-          type="color"
-          density="compact"
-          variant="outlined"
-          hide-details
-          class="mb-4"
-          @update:model-value="updateStrokeColor"
-        ></v-text-field>
+        <div class="mb-4">
+          <label class="color-label">Stroke Color</label>
+          <AdvancedColorPicker
+            v-model="strokeColor"
+            @update:model-value="updateStrokeColor"
+          />
+        </div>
       </div>
 
       <div class="border-inputs">
@@ -146,6 +137,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import type { DocumentElement } from "../../../types/document";
+import AdvancedColorPicker from "../AdvancedColorPicker.vue";
 
 const props = defineProps<{
   element: DocumentElement;
@@ -264,5 +256,11 @@ function updateRotation() {
 .border-inputs {
   display: flex;
   flex-direction: column;
+}
+
+.color-label {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  margin-bottom: 4px;
 }
 </style>

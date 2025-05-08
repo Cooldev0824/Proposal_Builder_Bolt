@@ -28,70 +28,56 @@
       @update:model-value="updateBorderWidth"
     ></v-text-field>
 
-    <v-text-field
-      v-model="borderColor"
-      label="Border Color"
-      type="color"
-      density="compact"
-      variant="outlined"
-      hide-details
-      class="mb-4"
-      @update:model-value="updateBorderColor"
-    ></v-text-field>
+    <div class="mb-4">
+      <label class="color-label">Border Color</label>
+      <AdvancedColorPicker
+        v-model="borderColor"
+        @update:model-value="updateBorderColor"
+      />
+    </div>
 
     <!-- Header Style -->
     <div class="section-title mt-4">Header Style</div>
-    <v-text-field
-      v-model="headerBackgroundColor"
-      label="Background Color"
-      type="color"
-      density="compact"
-      variant="outlined"
-      hide-details
-      class="mb-4"
-      @update:model-value="updateHeaderBackgroundColor"
-    ></v-text-field>
+    <div class="mb-4">
+      <label class="color-label">Header Background Color</label>
+      <AdvancedColorPicker
+        v-model="headerBackgroundColor"
+        @update:model-value="updateHeaderBackgroundColor"
+      />
+    </div>
 
-    <v-text-field
-      v-model="headerTextColor"
-      label="Text Color"
-      type="color"
-      density="compact"
-      variant="outlined"
-      hide-details
-      class="mb-4"
-      @update:model-value="updateHeaderTextColor"
-    ></v-text-field>
+    <div class="mb-4">
+      <label class="color-label">Header Text Color</label>
+      <AdvancedColorPicker
+        v-model="headerTextColor"
+        @update:model-value="updateHeaderTextColor"
+      />
+    </div>
 
     <!-- Cell Style -->
     <div class="section-title mt-4">Cell Style</div>
-    <v-text-field
-      v-model="cellBackgroundColor"
-      label="Background Color"
-      type="color"
-      density="compact"
-      variant="outlined"
-      hide-details
-      class="mb-4"
-      @update:model-value="updateCellBackgroundColor"
-    ></v-text-field>
+    <div class="mb-4">
+      <label class="color-label">Cell Background Color</label>
+      <AdvancedColorPicker
+        v-model="cellBackgroundColor"
+        @update:model-value="updateCellBackgroundColor"
+      />
+    </div>
 
-    <v-text-field
-      v-model="cellTextColor"
-      label="Text Color"
-      type="color"
-      density="compact"
-      variant="outlined"
-      hide-details
-      class="mb-4"
-      @update:model-value="updateCellTextColor"
-    ></v-text-field>
+    <div class="mb-4">
+      <label class="color-label">Cell Text Color</label>
+      <AdvancedColorPicker
+        v-model="cellTextColor"
+        @update:model-value="updateCellTextColor"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import type { DocumentElement } from "../../../types/document";
+import AdvancedColorPicker from "../AdvancedColorPicker.vue";
 
 const props = defineProps<{
   element: DocumentElement;
@@ -190,6 +176,12 @@ function updateCellTextColor() {
   font-weight: 500;
   color: var(--text-secondary);
   margin-bottom: 8px;
+}
+
+.color-label {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  margin-bottom: 4px;
 }
 
 .property-row {
