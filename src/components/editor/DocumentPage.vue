@@ -121,7 +121,7 @@ const ShapeElement = defineAsyncComponent({
 });
 
 const TableElement = defineAsyncComponent({
-  loader: () => import("./elements/TableElement.vue"),
+  loader: () => import("./elements/SimpleTableElement.vue"),
   timeout: 3000,
   errorComponent: {
     template: '<div class="error-loading">Error loading table element</div>',

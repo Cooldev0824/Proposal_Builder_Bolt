@@ -2,21 +2,6 @@
   <div class="property-group">
     <div class="property-group-title">Table Properties</div>
 
-    <!-- Table Structure -->
-    <div class="section-title">Structure</div>
-    <div class="property-row">
-      <v-btn block @click="addColumn">
-        <v-icon left>mdi-table-column-plus-after</v-icon>
-        Add Column
-      </v-btn>
-    </div>
-    <div class="property-row">
-      <v-btn block @click="addRow">
-        <v-icon left>mdi-table-row-plus-after</v-icon>
-        Add Row
-      </v-btn>
-    </div>
-
     <!-- Border Style -->
     <div class="section-title mt-4">Border Style</div>
     <v-select
@@ -167,51 +152,6 @@ function updateAllProperties() {
   };
 
   updateElement(updates);
-}
-
-function addColumn() {
-  const updatedElement = {
-    ...props.element,
-    content: {
-      headers: [...props.element.content.headers, "New Column"],
-      rows: props.element.content.rows.map((row) => [...row, ""]),
-    },
-    // Preserve all style properties when adding a column
-    style: {
-      ...props.element.style,
-      borderStyle: borderStyle.value,
-      borderWidth: borderWidth.value,
-      borderColor: borderColor.value,
-      headerBackgroundColor: headerBackgroundColor.value,
-      headerTextColor: headerTextColor.value,
-      cellBackgroundColor: cellBackgroundColor.value,
-      cellTextColor: cellTextColor.value,
-    },
-  };
-  emit("update:element", updatedElement);
-}
-
-function addRow() {
-  const newRow = new Array(props.element.content.headers.length).fill("");
-  const updatedElement = {
-    ...props.element,
-    content: {
-      ...props.element.content,
-      rows: [...props.element.content.rows, newRow],
-    },
-    // Preserve all style properties when adding a row
-    style: {
-      ...props.element.style,
-      borderStyle: borderStyle.value,
-      borderWidth: borderWidth.value,
-      borderColor: borderColor.value,
-      headerBackgroundColor: headerBackgroundColor.value,
-      headerTextColor: headerTextColor.value,
-      cellBackgroundColor: cellBackgroundColor.value,
-      cellTextColor: cellTextColor.value,
-    },
-  };
-  emit("update:element", updatedElement);
 }
 
 // Use this single function for all property updates

@@ -125,7 +125,7 @@ const ShapeElement = defineAsyncComponent(
   () => import("./elements/ShapeElement.vue")
 );
 const TableElement = defineAsyncComponent(
-  () => import("./elements/TableElement.vue")
+  () => import("./elements/SimpleTableElement.vue")
 );
 const SignatureElement = defineAsyncComponent(
   () => import("./elements/SignatureElement.vue")
