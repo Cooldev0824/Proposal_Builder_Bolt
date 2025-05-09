@@ -142,24 +142,6 @@
     <v-spacer></v-spacer>
 
     <div class="toolbar-group">
-      <!-- <v-btn
-        icon
-        @click="toggleRuler"
-        size="small"
-        :color="showRuler ? 'primary' : ''"
-      >
-        <v-icon>mdi-ruler</v-icon>
-        <v-tooltip activator="parent" location="bottom">Toggle Ruler</v-tooltip>
-      </v-btn> -->
-      <!-- <v-btn
-        icon
-        @click="toggleGrid"
-        size="small"
-        :color="showGrid ? 'primary' : ''"
-      >
-        <v-icon>mdi-grid</v-icon>
-        <v-tooltip activator="parent" location="bottom">Toggle Grid</v-tooltip>
-      </v-btn> -->
       <v-btn icon @click="$emit('tool-clicked', 'zoom-in')" size="small">
         <v-icon>mdi-magnify-plus</v-icon>
         <v-tooltip activator="parent" location="bottom">Zoom In</v-tooltip>
@@ -270,7 +252,6 @@ const isUnderline = ref(false);
 const textAlign = ref("left");
 
 // UI state
-const showRuler = ref(false);
 const showGrid = ref(true); // Default to true
 
 // Paper size state
@@ -343,10 +324,7 @@ function setTextAlign(align: string) {
   emit("tool-clicked", "text-align", align);
 }
 
-function toggleRuler() {
-  showRuler.value = !showRuler.value;
-  emit("tool-clicked", "ruler", showRuler.value);
-}
+// Ruler functionality removed
 
 function toggleGrid() {
   // Toggle the grid visibility locally

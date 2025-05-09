@@ -179,22 +179,30 @@ function getElementName(element: DocumentElement): string {
 <style scoped lang="scss">
 .element-toolbar {
   position: absolute;
-  background-color: rgba(255, 255, 255, 0.98);
+  background-color: rgba(255, 255, 255, 0.75); /* More transparent background */
   border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   padding: 8px 12px;
   z-index: 3000;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(
+    10px
+  ); /* Increased blur for better readability with transparency */
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-bottom: 3px solid var(--primary);
+  border-bottom: 3px solid rgba(var(--primary-rgb), 0.8); /* Semi-transparent border */
   min-width: 250px;
-  margin-top: 10px; /* Add space to avoid overlapping with the ruler */
+  margin-top: 10px;
 
   &:hover {
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+    background-color: rgba(
+      255,
+      255,
+      255,
+      0.85
+    ); /* Slightly less transparent on hover */
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
   }
 }
 
@@ -225,15 +233,16 @@ function getElementName(element: DocumentElement): string {
 .layer-number {
   font-size: 12px;
   color: var(--text-secondary);
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.08);
   padding: 2px 8px;
   border-radius: 12px;
+  backdrop-filter: blur(4px);
 }
 
 .toolbar-divider {
   width: 1px;
   height: 24px;
-  background-color: var(--border);
+  background-color: rgba(0, 0, 0, 0.1);
   margin: 0 12px;
 }
 
@@ -257,8 +266,9 @@ function getElementName(element: DocumentElement): string {
   padding: 0;
 
   &:hover {
-    background-color: rgba(12, 132, 254, 0.1);
+    background-color: rgba(var(--primary-rgb), 0.15);
     transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.1);
   }
 
   &:active {

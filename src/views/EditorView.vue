@@ -29,8 +29,6 @@
       />
 
       <div class="main-editor" ref="editorContainer">
-        <Ruler :visible="showRuler" :zoom="zoom" />
-
         <div
           class="editor-content"
           :style="editorContentStyle"
@@ -184,7 +182,6 @@ import SidebarNavigation from "../components/editor/SidebarNavigation.vue";
 import DocumentPage from "../components/editor/DocumentPage.vue";
 import PropertiesPanel from "../components/editor/PropertiesPanel.vue";
 import LayerControlPanel from "../components/editor/LayerControlPanel.vue";
-import Ruler from "../components/editor/Ruler.vue";
 import PreviewDialog from "../components/editor/PreviewDialog.vue";
 import DocumentSizeDialog from "../components/editor/DocumentSizeDialog.vue";
 import { directExportToPdf } from "../services/pdfExportService2";
@@ -211,7 +208,6 @@ const selectedElement = ref<DocumentElement | null>(null);
 const activeTools = ref<string[]>([]);
 const editorContainer = ref<HTMLElement | null>(null);
 const documentPageRefs = ref<any[]>([]);
-const showRuler = ref(false);
 const showGrid = ref(true); // Show grid by default
 const zoom = ref(1);
 const showPreview = ref(false);
@@ -634,10 +630,6 @@ function handleToolClick(tool: string, value?: any) {
         title: "New Section",
         elements: [],
       });
-      break;
-
-    case "ruler":
-      showRuler.value = value;
       break;
 
     case "grid":

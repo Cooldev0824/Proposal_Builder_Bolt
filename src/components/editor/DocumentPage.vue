@@ -1,16 +1,6 @@
 <template>
   <div class="document-page-container">
-    <!-- Grid overlay with rulers positioned outside the page -->
-    <GridOverlay
-      :visible="showGrid"
-      :width="pageWidth"
-      :height="pageHeight"
-      :grid-size="gridSize"
-      @toggle-grid="toggleGrid"
-      class="rulers-container"
-    />
-
-    <!-- Actual document page without padding for rulers -->
+    <!-- Actual document page -->
     <div class="document-page" :class="{ active: isActive }" :style="pageStyle">
       <div class="page-content" ref="pageContent">
         <!-- Element toolbar positioned at the top of the page content -->
@@ -97,7 +87,6 @@ import {
 } from "vue";
 import { Section, DocumentElement } from "../../types/document";
 import ElementToolbar from "./ElementToolbar.vue";
-import GridOverlay from "./GridOverlay.vue";
 import { getPaperSizeByName, getLandscapeSize } from "../../utils/paperSizes";
 
 // Lazy-loaded element components with error handling
@@ -183,7 +172,6 @@ const emit = defineEmits<{
   (e: "move-element-down", element: DocumentElement): void;
   (e: "move-element-to-top", element: DocumentElement): void;
   (e: "move-element-to-bottom", element: DocumentElement): void;
-  (e: "toggle-grid", visible: boolean): void;
 }>();
 
 const pageContent = ref<HTMLElement | null>(null);
@@ -191,7 +179,6 @@ const selectedElement = ref<DocumentElement | null>(null);
 const hoveredElement = ref<DocumentElement | null>(null);
 const elementRefs = ref<any[]>([]);
 const showGrid = ref(true); // Default to true, will be updated when props change
-const gridSize = ref(10); // Grid size in pixels (each small square is 10px)
 const selectedElementPosition = ref<{
   top: number;
   left: number;
@@ -387,15 +374,7 @@ function moveElementToBottom(element: DocumentElement) {
   emit("move-element-to-bottom", element);
 }
 
-// Grid functions
-function toggleGrid() {
-  // Toggle the grid visibility
-  showGrid.value = !showGrid.value;
-  console.log("Grid toggled in DocumentPage:", showGrid.value);
-
-  // Emit the event to notify parent components
-  emit("toggle-grid", showGrid.value);
-}
+// Grid functions are removed
 
 // Function to snap position to grid (commented out as currently unused)
 // function snapToGrid(position: { x: number; y: number }) {
@@ -440,16 +419,6 @@ onErrorCaptured((error, instance, info) => {
 .document-page-container {
   position: relative;
   margin: 16px auto;
-  /* Container for both the rulers and the document page */
-}
-
-.rulers-container {
-  /* Position the rulers container relative to the document-page-container */
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 10;
-  pointer-events: none;
 }
 
 .document-page {
@@ -457,7 +426,6 @@ onErrorCaptured((error, instance, info) => {
   box-shadow: var(--shadow-md);
   transition: transform 0.2s ease;
   position: relative;
-  /* No margin or padding needed as rulers are outside */
 
   &.active {
     transform: translateY(-2px);
