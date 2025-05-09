@@ -32,6 +32,7 @@ export type DocumentElement = {
   size: Size;
   style?: any;
   zIndex?: number;
+  children?: DocumentElement[]; // For group elements
 };
 
 export interface TextElement extends DocumentElement {
@@ -119,4 +120,17 @@ export interface GridCell {
   id: string;
   elements: DocumentElement[];
   size: number;
+}
+
+export interface GroupElement extends DocumentElement {
+  type: "group";
+  content: null;
+  children: DocumentElement[];
+  style: {
+    borderColor?: string;
+    borderWidth?: number;
+    borderStyle?: string;
+    backgroundColor?: string;
+    opacity?: number;
+  };
 }

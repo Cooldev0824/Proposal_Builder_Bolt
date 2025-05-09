@@ -3,10 +3,10 @@
     <div class="panel-header">
       <h3>Layers</h3>
     </div>
-    
+
     <div class="layer-list">
-      <div 
-        v-for="element in sortedElements" 
+      <div
+        v-for="element in sortedElements"
         :key="element.id"
         class="layer-item"
         :class="{ 'selected': selectedElement?.id === element.id }"
@@ -77,6 +77,7 @@ function getElementIcon(type: string): string {
     case 'signature': return 'mdi-draw'
     case 'form': return 'mdi-form-select'
     case 'grid': return 'mdi-grid'
+    case 'group': return 'mdi-folder'
     default: return 'mdi-shape-outline'
   }
 }
@@ -84,26 +85,31 @@ function getElementIcon(type: string): string {
 function getElementName(element: DocumentElement): string {
   // Create a user-friendly name based on element type and content
   const prefix = element.type.charAt(0).toUpperCase() + element.type.slice(1)
-  
+
   switch (element.type) {
     case 'text':
       // For text elements, use the first few words
-      const text = typeof element.content === 'string' 
+      const text = typeof element.content === 'string'
         ? element.content.replace(/<[^>]*>/g, '') // Remove HTML tags
         : ''
       const shortText = text.length > 15 ? text.substring(0, 15) + '...' : text
       return `${prefix}: ${shortText || 'Empty'}`
-    
+
     case 'shape':
       // For shapes, include the shape type
       return `${prefix}: ${element.content || 'Rectangle'}`
-    
+
     case 'image':
       return `${prefix}`
-    
+
     case 'table':
       return `${prefix}: ${element.content?.headers?.length || 0} columns`
-    
+
+    case 'group':
+      // For groups, show the number of elements in the group
+      const childCount = element.children?.length || 0
+      return `${prefix} (${childCount} items)`
+
     default:
       return `${prefix} ${element.id.split('-')[1] || ''}`
   }
@@ -143,7 +149,7 @@ function moveToBottom(element: DocumentElement) {
 .panel-header {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
-  
+
   h3 {
     margin: 0;
     font-size: 16px;
@@ -164,11 +170,11 @@ function moveToBottom(element: DocumentElement) {
   border-radius: 4px;
   margin-bottom: 4px;
   cursor: pointer;
-  
+
   &:hover {
     background-color: var(--hover);
   }
-  
+
   &.selected {
     background-color: var(--selected);
   }
@@ -195,7 +201,7 @@ function moveToBottom(element: DocumentElement) {
   display: flex;
   gap: 2px;
   opacity: 0.5;
-  
+
   .layer-item:hover & {
     opacity: 1;
   }

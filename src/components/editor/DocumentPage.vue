@@ -43,8 +43,8 @@
               <component
                 :is="getElementComponent(element.type)"
                 :element="element"
-                :isSelected="selectedElement?.id === element.id"
-                @click.stop="selectElement(element)"
+                :isSelected="isElementSelected(element)"
+                @click.stop="handleElementClick($event, element)"
                 @update:element="updateElement"
                 ref="elementRefs"
               />
@@ -160,6 +160,15 @@ const GridBlockElement = defineAsyncComponent({
   },
 });
 
+const GroupElement = defineAsyncComponent({
+  loader: () => import("./elements/GroupElement.vue"),
+  timeout: 3000,
+  errorComponent: {
+    template:
+      '<div class="error-loading">Error loading group element</div>',
+  },
+});
+
 const props = defineProps<{
   section: Section;
   isActive: boolean;
@@ -185,10 +194,14 @@ const emit = defineEmits<{
   (e: "move-element-to-top", element: DocumentElement): void;
   (e: "move-element-to-bottom", element: DocumentElement): void;
   (e: "toggle-grid", visible: boolean): void;
+  (e: "elements-selected", elements: DocumentElement[]): void;
+  (e: "group-elements", elements: DocumentElement[]): void;
+  (e: "ungroup-element", element: DocumentElement): void;
 }>();
 
 const pageContent = ref<HTMLElement | null>(null);
 const selectedElement = ref<DocumentElement | null>(null);
+const selectedElements = ref<DocumentElement[]>([]);
 const hoveredElement = ref<DocumentElement | null>(null);
 const elementRefs = ref<any[]>([]);
 const showLayerControls = ref(true); // Always show layer controls
@@ -274,19 +287,92 @@ function getElementComponent(type: string) {
       return FormElement;
     case "grid":
       return GridBlockElement;
+    case "group":
+      return GroupElement;
     default:
       console.warn(`Unknown element type: ${type}`);
       return null;
   }
 }
 
+// Check if an element is selected
+function isElementSelected(element: DocumentElement): boolean {
+  return selectedElement.value?.id === element.id ||
+         selectedElements.value.some(e => e.id === element.id);
+}
+
+// These functions have been removed as we no longer allow selecting child elements within groups
+
+// Handle element click with multi-selection support
+function handleElementClick(event: MouseEvent, element: DocumentElement) {
+  console.log("Element clicked:", element.id, "Shift key:", event.shiftKey);
+
+  // If shift key is pressed, add to multi-selection
+  if (event.shiftKey) {
+    // If this is the first element in multi-selection, add the currently selected element first
+    if (selectedElements.value.length === 0 && selectedElement.value) {
+      selectedElements.value = [selectedElement.value];
+    }
+
+    // If element is already selected, remove it from selection
+    if (selectedElements.value.some(e => e.id === element.id)) {
+      console.log("Removing element from multi-selection:", element.id);
+      selectedElements.value = selectedElements.value.filter(e => e.id !== element.id);
+    } else {
+      // Add to multi-selection
+      console.log("Adding element to multi-selection:", element.id);
+
+      // Create a new array to ensure reactivity
+      selectedElements.value = [...selectedElements.value, element];
+
+      // If we have a primary selection, keep it
+      if (!selectedElement.value) {
+        selectedElement.value = element;
+        emit("element-selected", element);
+      }
+    }
+
+    console.log("Multi-selection:", selectedElements.value.length, "elements selected");
+    console.log("Selected elements:", selectedElements.value.map(e => e.id));
+
+    // Always emit the multi-selection event, even if empty
+    emit("elements-selected", selectedElements.value);
+  } else {
+    // Single selection - clear multi-selection
+    console.log("Single selection:", element.id);
+    selectedElements.value = [element]; // Keep a single element in the array for consistency
+    selectedElement.value = element;
+    emit("element-selected", element);
+
+    // Also emit elements-selected with the single element
+    // This ensures the canGroup flag is properly updated
+    emit("elements-selected", [element]);
+  }
+}
+
+// Select a single element (used internally)
 function selectElement(element: DocumentElement) {
   selectedElement.value = element;
+  selectedElements.value = [];
   emit("element-selected", element);
 }
 
 function updateElement(element: DocumentElement) {
   emit("element-updated", element);
+}
+
+// Group selected elements
+function groupSelectedElements() {
+  if (selectedElements.value.length > 1) {
+    emit("group-elements", selectedElements.value);
+  }
+}
+
+// Ungroup an element
+function ungroupElement(element: DocumentElement) {
+  if (element.type === "group" && element.children && element.children.length > 0) {
+    emit("ungroup-element", element);
+  }
 }
 
 // Layer control functions

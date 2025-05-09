@@ -12,6 +12,8 @@
       :paperSize="document.paperSize"
       :orientation="document.orientation"
       :isExportingPdf="isExportingPdf"
+      :canGroup="canGroup"
+      :canUngroup="canUngroup"
       @tool-clicked="handleToolClick"
       @save="saveDocument"
       @navigate-to-dashboard="navigateToDashboard"
@@ -53,11 +55,14 @@
             :paperSize="document.paperSize"
             :orientation="document.orientation"
             @element-selected="selectElement"
+            @elements-selected="selectMultipleElements"
             @element-updated="updateElement"
             @move-element-up="moveElementUp"
             @move-element-down="moveElementDown"
             @move-element-to-top="moveElementToTop"
             @move-element-to-bottom="moveElementToBottom"
+            @group-elements="groupElements"
+            @ungroup-element="ungroupElement"
             @toggle-grid="toggleGrid"
             ref="documentPageRefs"
           />
@@ -208,6 +213,7 @@ const document = reactive<Document>({
 
 const currentSection = ref(0);
 const selectedElement = ref<DocumentElement | null>(null);
+const selectedElements = ref<DocumentElement[]>([]); // For multi-selection
 const activeTools = ref<string[]>([]);
 const editorContainer = ref<HTMLElement | null>(null);
 const documentPageRefs = ref<any[]>([]);
@@ -219,6 +225,8 @@ const showDocumentSizeDialog = ref(false);
 const isExportingPdf = ref(false);
 const showLayerPanel = ref(true); // Always show layer panel
 const activeTab = ref("properties"); // Default to properties tab
+const canGroup = ref(false); // Can group elements
+const canUngroup = ref(false); // Can ungroup elements
 
 // Delete dialog state
 const showDeleteDialog = ref(false);
@@ -239,6 +247,9 @@ const drawStartY = ref(0);
 const drawEndX = ref(0);
 const drawEndY = ref(0);
 const currentShapeType = ref<string>("rectangle");
+
+// Clipboard state for copy/paste functionality
+const clipboard = ref<DocumentElement | null>(null);
 
 const editorContentStyle = computed(() => ({
   transform: `scale(${zoom.value})`,
@@ -327,6 +338,10 @@ onMounted(async () => {
     });
   }
 
+  // Add a global keydown event listener to capture all keyboard shortcuts
+  // This ensures our shortcuts take precedence over browser defaults
+  window.addEventListener('keydown', handleGlobalKeyDown, true); // Use capture phase to ensure we get the event first
+
   // Reset loading flag and unsaved changes flag
   isLoadingDocument.value = false;
   resetUnsavedChanges();
@@ -370,11 +385,59 @@ function deleteSection(index: number) {
 }
 
 function selectElement(element: DocumentElement | null) {
+  console.log("Selecting element:", element?.id, "Type:", element?.type);
+
   selectedElement.value = element;
+  selectedElements.value = element ? [element] : [];
+
+  // Update active tools
   if (element) {
     activeTools.value = [element.type];
+
+    // Check if this is a group element that can be ungrouped
+    if (element.type === 'group' && element.children && element.children.length > 0) {
+      console.log("Group selected with", element.children.length, "children - enabling ungroup");
+      canUngroup.value = true;
+    } else {
+      canUngroup.value = false;
+    }
   } else {
     activeTools.value = [];
+    canUngroup.value = false;
+  }
+
+  // Reset group capability
+  canGroup.value = false;
+
+  console.log("Single element selected:", element?.id, "Can ungroup:", canUngroup.value);
+}
+
+// Handle multi-selection of elements
+function selectMultipleElements(elements: DocumentElement[]) {
+  console.log("Multi-selection received:", elements.length, "elements");
+
+  // Update the selectedElements array
+  selectedElements.value = elements;
+
+  // If we have multiple elements selected, we can group them
+  canGroup.value = elements.length > 1;
+  console.log("Can group:", canGroup.value, "(" + elements.length + " elements selected)");
+
+  // If we have a single element selected that's a group, we can ungroup it
+  if (elements.length === 1 && elements[0].type === 'group' && elements[0].children && elements[0].children.length > 0) {
+    canUngroup.value = true;
+    console.log("Can ungroup: true (single group selected)");
+  } else {
+    canUngroup.value = false;
+    console.log("Can ungroup: false");
+  }
+
+  // If we have a single element selected, update the activeTools array
+  if (elements.length === 1) {
+    activeTools.value = [elements[0].type];
+  } else if (elements.length > 1) {
+    // If we have multiple elements selected, set a special tool state
+    activeTools.value = ['multi-select'];
   }
 }
 
@@ -421,6 +484,208 @@ function duplicateElement(element: DocumentElement) {
 
   document.sections[currentSection.value].elements.push(newElement);
   selectedElement.value = newElement;
+}
+
+// Group multiple elements into a single group element (Photoshop-like)
+function groupElements(elements: DocumentElement[]) {
+  console.log("Grouping elements:", elements.map(e => e.id));
+  if (elements.length < 2) {
+    console.log("Cannot group - need at least 2 elements");
+    return;
+  }
+
+  // Find the section containing these elements
+  const sectionIndex = document.sections.findIndex((s) =>
+    elements.some((e) => s.elements.some((se) => se.id === e.id))
+  );
+
+  if (sectionIndex < 0) {
+    console.log("Cannot find section containing elements");
+    return;
+  }
+
+  // Calculate the bounding box for all elements
+  let minX = Number.MAX_VALUE;
+  let minY = Number.MAX_VALUE;
+  let maxX = 0;
+  let maxY = 0;
+
+  elements.forEach(element => {
+    minX = Math.min(minX, element.position.x);
+    minY = Math.min(minY, element.position.y);
+    maxX = Math.max(maxX, element.position.x + element.size.width);
+    maxY = Math.max(maxY, element.position.y + element.size.height);
+  });
+
+  console.log("Group bounding box:", { minX, minY, maxX, maxY });
+
+  // Create a new group element
+  const groupElement: DocumentElement = {
+    id: `group-${Date.now()}`,
+    type: 'group',
+    content: null,
+    position: { x: minX, y: minY },
+    size: { width: maxX - minX, height: maxY - minY },
+    style: {
+      borderColor: '#666',
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      backgroundColor: 'transparent',
+      opacity: 1
+    },
+    zIndex: Math.max(...elements.map(e => e.zIndex || 0)) + 1,
+    children: elements.map(e => {
+      // Create a deep copy of the element to avoid reference issues
+      const copy = JSON.parse(JSON.stringify(e));
+
+      // Store the original absolute position in the copy
+      // This is important for the Photoshop-like behavior
+      copy.position = {
+        x: e.position.x - minX, // Position relative to group
+        y: e.position.y - minY  // Position relative to group
+      };
+
+      return copy;
+    })
+  };
+
+  console.log("Created group element:", groupElement.id, "with", groupElement.children?.length, "children");
+
+  // Remove the original elements from the section
+  document.sections[sectionIndex].elements = document.sections[sectionIndex].elements
+    .filter(e => !elements.some(se => se.id === e.id));
+
+  // Add the group element to the section
+  document.sections[sectionIndex].elements.push(groupElement);
+
+  // Select the new group element
+  selectedElement.value = groupElement;
+  selectedElements.value = [groupElement];
+  canGroup.value = false;
+  canUngroup.value = true;
+  activeTools.value = ['group'];
+
+  console.log("Group created successfully");
+}
+
+// Ungroup a group element into its individual elements (Photoshop-like)
+function ungroupElement(element: DocumentElement) {
+  console.log("Ungrouping element:", element.id);
+  console.log("All groups in current section:", document.sections[currentSection.value].elements
+    .filter(e => e.type === 'group')
+    .map(e => e.id));
+  console.log("Currently selected element:", selectedElement.value?.id);
+
+  if (element.type !== 'group' || !element.children || element.children.length === 0) {
+    console.log("Cannot ungroup - not a group or no children");
+    return;
+  }
+
+  // Find the section containing this group
+  const sectionIndex = currentSection.value;
+
+  // Make sure we have a valid section
+  if (sectionIndex < 0 || sectionIndex >= document.sections.length) {
+    console.log("Cannot find valid section for ungrouping");
+    return;
+  }
+
+  // Find the actual element in the document by ID
+  const actualElement = document.sections[sectionIndex].elements.find(e => e.id === element.id);
+
+  if (!actualElement || actualElement.type !== 'group' || !actualElement.children || actualElement.children.length === 0) {
+    console.log("Group element not found in current section or has no children:", element.id);
+
+    // Show notification
+    snackbar.value = {
+      show: true,
+      text: "Cannot ungroup - group not found in current section",
+      color: "warning",
+    };
+    return;
+  }
+
+  console.log("Found actual element in document:", actualElement.id);
+
+  // Get the current timestamp to ensure unique IDs
+  const timestamp = Date.now();
+
+  // Extract the children and adjust their positions to absolute coordinates
+  const childElements = actualElement.children.map((child, index) => {
+    // Create a deep copy of the child to avoid reference issues
+    const copy = JSON.parse(JSON.stringify(child));
+
+    // Generate a new ID to ensure uniqueness
+    copy.id = `${child.type}-${timestamp}-${index}`;
+
+    // Adjust position to be absolute again
+    // Child positions are stored relative to the group
+    copy.position = {
+      x: actualElement.position.x + child.position.x,
+      y: actualElement.position.y + child.position.y
+    };
+
+    console.log("Ungrouped element position:", copy.id, copy.position);
+    return copy;
+  });
+
+  console.log("Extracted", childElements.length, "children from group");
+
+  // Get the current elements in the section
+  const currentElements = [...document.sections[sectionIndex].elements];
+
+  // Find the index of the group element
+  const groupIndex = currentElements.findIndex(e => e.id === actualElement.id);
+
+  if (groupIndex === -1) {
+    console.log("Group element not found in section");
+
+    // Show notification
+    snackbar.value = {
+      show: true,
+      text: "Cannot ungroup - group not found in section",
+      color: "warning",
+    };
+    return;
+  }
+
+  // Remove the group element
+  currentElements.splice(groupIndex, 1);
+
+  // Insert the child elements at the same position
+  currentElements.splice(groupIndex, 0, ...childElements);
+
+  // Update the section elements
+  document.sections[sectionIndex].elements = currentElements;
+
+  // Select all the child elements (Photoshop-like behavior)
+  selectedElements.value = childElements;
+
+  // Set the first child as the primary selection
+  if (childElements.length > 0) {
+    selectedElement.value = childElements[0];
+    // Update the selectedElements array
+    selectedElements.value = childElements;
+  } else {
+    selectedElement.value = null;
+    selectedElements.value = [];
+  }
+
+  // Update the canGroup and canUngroup flags
+  canGroup.value = childElements.length > 1;
+  canUngroup.value = false;
+
+  // Save the current state to history
+  historyStore.pushState(document);
+
+  // Show success notification
+  snackbar.value = {
+    show: true,
+    text: `Group ${actualElement.id} ungrouped successfully`,
+    color: "success",
+  };
+
+  console.log("Group ungrouped successfully:", actualElement.id);
 }
 
 // Drawing functions for creating elements
@@ -619,7 +884,80 @@ async function exportToPdf() {
 }
 
 function handleToolClick(tool: string, value?: any) {
+  console.log("Tool clicked:", tool, "Value:", value);
+
   switch (tool) {
+    case "group":
+      console.log("Group button clicked. Selected elements:", selectedElements.value.length);
+      if (selectedElements.value.length > 1) {
+        console.log("Grouping elements:", selectedElements.value.map(e => e.id));
+        groupElements(selectedElements.value);
+      } else {
+        console.log("Cannot group - need multiple elements selected");
+      }
+      break;
+
+    case "ungroup":
+      console.log("Ungroup button clicked");
+      console.log("Currently selected element:", selectedElement.value?.id);
+      console.log("All groups in current section:", document.sections[currentSection.value].elements
+        .filter(e => e.type === 'group')
+        .map(e => e.id));
+
+      // DIRECT APPROACH: If we have a selected element that's a group, ungroup it directly
+      if (selectedElement.value && selectedElement.value.type === 'group') {
+        // Get the ID of the selected group
+        const selectedGroupId = selectedElement.value.id;
+        console.log("Selected group ID:", selectedGroupId);
+
+        // Find this exact group in the document
+        const groupToUngroup = document.sections[currentSection.value].elements.find(
+          e => e.id === selectedGroupId && e.type === 'group'
+        );
+
+        if (groupToUngroup) {
+          console.log("Found the exact selected group in document:", groupToUngroup.id);
+
+          // Directly ungroup this specific group
+          ungroupElement(groupToUngroup);
+        } else {
+          console.log("ERROR: Selected group not found in document:", selectedGroupId);
+
+          // Show notification
+          snackbar.value = {
+            show: true,
+            text: "Cannot ungroup - selected group not found in document",
+            color: "error",
+          };
+        }
+      } else {
+        // If no group is selected, find any group in the current section
+        console.log("No group selected, looking for any group in the section");
+
+        const groupsInSection = document.sections[currentSection.value].elements.filter(
+          element => element.type === 'group' && element.children && element.children.length > 0
+        );
+
+        if (groupsInSection.length > 0) {
+          // If there are groups in the section, ungroup the first one
+          const groupToUngroup = groupsInSection[0];
+          console.log("Found group to ungroup:", groupToUngroup.id);
+
+          // Directly ungroup this group
+          ungroupElement(groupToUngroup);
+        } else {
+          console.log("No groups found in current section");
+
+          // Show notification
+          snackbar.value = {
+            show: true,
+            text: "No groups found to ungroup",
+            color: "warning",
+          };
+        }
+      }
+      break;
+
     case "undo":
       handleUndo();
       break;
@@ -718,6 +1056,14 @@ function handleToolClick(tool: string, value?: any) {
     case "export-pdf":
       exportToPdf();
       break;
+
+    case "copy":
+      copySelectedElements();
+      break;
+
+    case "paste":
+      pasteFromClipboard();
+      break;
   }
 }
 
@@ -769,6 +1115,78 @@ function getHighestZIndex(): number {
   });
 
   return highestZIndex;
+}
+
+// Helper function to find a group element in the current section
+function findGroupElementInCurrentSection(): DocumentElement | null {
+  if (!document.sections || !document.sections[currentSection.value]) {
+    return null;
+  }
+
+  const elements = document.sections[currentSection.value].elements;
+  if (!elements || elements.length === 0) {
+    return null;
+  }
+
+  // First, try to find the currently selected element if it's a group
+  if (selectedElement.value && selectedElement.value.type === 'group' &&
+      selectedElement.value.children && selectedElement.value.children.length > 0) {
+    console.log("Using currently selected group:", selectedElement.value.id);
+
+    // Make sure canUngroup is set to true
+    canUngroup.value = true;
+
+    return selectedElement.value;
+  }
+
+  // If no group is selected, find all group elements in the section
+  const groupElements = elements.filter(element =>
+    element.type === 'group' && element.children && element.children.length > 0
+  );
+
+  if (groupElements.length === 0) {
+    console.log("No group elements found in current section");
+    return null;
+  }
+
+  console.log("Found", groupElements.length, "group elements in current section");
+
+  // Select the first group element
+  const groupElement = groupElements[0];
+
+  // Force selection of this group
+  console.log("Forcing selection of group:", groupElement.id);
+
+  // Clear any existing selection first
+  selectedElement.value = null;
+  selectedElements.value = [];
+
+  // Immediately set canUngroup to true
+  canUngroup.value = true;
+
+  // Then select the group with a slight delay to ensure it takes effect
+  setTimeout(() => {
+    // Select the group element
+    selectedElement.value = groupElement;
+    selectedElements.value = [groupElement];
+
+    // Update active tools
+    activeTools.value = ['group'];
+
+    // Make sure canUngroup is set to true
+    canUngroup.value = true;
+
+    // Show notification
+    snackbar.value = {
+      show: true,
+      text: "Group selected for operation",
+      color: "info",
+    };
+
+    console.log("Group selection complete, canUngroup:", canUngroup.value);
+  }, 10);
+
+  return groupElement;
 }
 
 function addImageElement(
@@ -1330,6 +1748,12 @@ onMounted(() => {
 
   // Add keyboard shortcut for save
   window.addEventListener("keydown", handleKeyDown);
+  console.log("Keyboard event listener added for shortcuts");
+
+  // Initialize the canGroup and canUngroup flags
+  canGroup.value = false;
+  canUngroup.value = false;
+  console.log("Group/ungroup flags initialized");
 });
 
 // Clean up timers and event listeners
@@ -1341,12 +1765,462 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleKeyDown);
 });
 
+// Copy the selected element(s) to clipboard
+function copySelectedElements() {
+  // Check if we have any elements selected
+  if (selectedElements.value.length === 0 && !selectedElement.value) {
+    console.log("No elements selected, trying to find a group to copy");
+
+    // Try to find a group element in the current section
+    const groupElement = findGroupElementInCurrentSection();
+
+    if (groupElement) {
+      console.log("Found a group to copy:", groupElement.id);
+
+      // Create a deep copy of the group
+      const copy = JSON.parse(JSON.stringify(groupElement));
+
+      // Make sure all children are properly copied
+      if (copy.children && Array.isArray(copy.children) &&
+          groupElement.children && Array.isArray(groupElement.children)) {
+        console.log("Copying group with", copy.children.length, "children");
+
+        // Deep copy each child element
+        copy.children = groupElement.children.map(child => {
+          const childCopy = JSON.parse(JSON.stringify(child));
+          console.log("Copied child element:", child.id, "at position", child.position);
+          return childCopy;
+        });
+      }
+
+      clipboard.value = copy;
+      console.log("Copied group to clipboard:", groupElement.id);
+
+      // Show notification
+      snackbar.value = {
+        show: true,
+        text: `Copied group with ${copy.children?.length || 0} elements to clipboard`,
+        color: "success",
+      };
+
+      return;
+    } else {
+      console.log("No elements to copy");
+
+      // Show notification
+      snackbar.value = {
+        show: true,
+        text: "Nothing to copy - please select an element first",
+        color: "warning",
+      };
+
+      return;
+    }
+  }
+
+  if (selectedElements.value.length > 0) {
+    // If we have multiple elements selected, create a group in the clipboard
+    const elements = selectedElements.value;
+
+    // Calculate the bounding box for all elements
+    let minX = Number.MAX_VALUE;
+    let minY = Number.MAX_VALUE;
+    let maxX = 0;
+    let maxY = 0;
+
+    elements.forEach(element => {
+      minX = Math.min(minX, element.position.x);
+      minY = Math.min(minY, element.position.y);
+      maxX = Math.max(maxX, element.position.x + element.size.width);
+      maxY = Math.max(maxY, element.position.y + element.size.height);
+    });
+
+    // Create a group element for the clipboard
+    const groupElement: DocumentElement = {
+      id: `group-clipboard-${Date.now()}`,
+      type: 'group',
+      content: null,
+      position: { x: minX, y: minY },
+      size: { width: maxX - minX, height: maxY - minY },
+      style: {
+        borderColor: '#666',
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        backgroundColor: 'transparent',
+        opacity: 1
+      },
+      zIndex: Math.max(...elements.map(e => e.zIndex || 0)) + 1,
+      children: elements.map(e => {
+        // Create a deep copy of the element
+        const copy = JSON.parse(JSON.stringify(e));
+
+        // Store positions relative to the group
+        copy.position = {
+          x: e.position.x - minX,
+          y: e.position.y - minY
+        };
+
+        return copy;
+      })
+    };
+
+    clipboard.value = groupElement;
+    console.log("Copied group with", elements.length, "elements to clipboard");
+
+    // Show notification
+    snackbar.value = {
+      show: true,
+      text: `Copied ${elements.length} elements to clipboard`,
+      color: "success",
+    };
+  } else if (selectedElement.value) {
+    // Copy a single element
+    const element = selectedElement.value;
+
+    // Create a deep copy of the element
+    const copy = JSON.parse(JSON.stringify(element));
+
+    // If it's a group, make sure all children are properly copied
+    if (element.type === 'group' && element.children) {
+      console.log("Copying group with", element.children.length, "children");
+
+      // Make sure the children array is properly copied
+      if (!Array.isArray(copy.children)) {
+        copy.children = [];
+      }
+
+      // Deep copy each child element
+      copy.children = element.children.map(child => {
+        const childCopy = JSON.parse(JSON.stringify(child));
+        console.log("Copied child element:", child.id, "at position", child.position);
+        return childCopy;
+      });
+    }
+
+    clipboard.value = copy;
+    console.log("Copied element to clipboard:", element.type);
+
+    // Show notification
+    snackbar.value = {
+      show: true,
+      text: `Copied ${element.type} element to clipboard`,
+      color: "success",
+    };
+  }
+}
+
+// Paste the clipboard content at the current position
+function pasteFromClipboard() {
+  if (!clipboard.value) {
+    console.log("Nothing in clipboard to paste");
+    return;
+  }
+
+  // Create a deep copy of the clipboard content
+  const clipboardCopy = JSON.parse(JSON.stringify(clipboard.value));
+
+  // Get the current timestamp to ensure unique IDs
+  const timestamp = Date.now();
+
+  // Check if we're pasting a group or a regular element
+  if (clipboardCopy.type === 'group' && Array.isArray(clipboardCopy.children)) {
+    console.log("Pasting a group with", clipboardCopy.children.length, "children");
+
+    // Create a new group element
+    const pastedGroup = {
+      id: `group-${timestamp}`,
+      type: 'group',
+      content: null,
+      position: {
+        x: clipboardCopy.position.x + 20,
+        y: clipboardCopy.position.y + 20
+      },
+      size: {
+        width: clipboardCopy.size.width,
+        height: clipboardCopy.size.height
+      },
+      style: clipboardCopy.style || {
+        borderColor: '#666',
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        backgroundColor: 'transparent',
+        opacity: 1
+      },
+      zIndex: clipboardCopy.zIndex || getHighestZIndex() + 1,
+      children: []
+    };
+
+    // Process each child element
+    pastedGroup.children = clipboardCopy.children.map((child: DocumentElement, index: number) => {
+      if (!child) {
+        console.error("Invalid child element in clipboard group");
+        return null;
+      }
+
+      // Create a deep copy of the child
+      const childCopy = JSON.parse(JSON.stringify(child));
+
+      // Generate a new ID for the child
+      childCopy.id = `${child.type}-${timestamp}-${index}`;
+
+      // Keep the child's position relative to the group
+      // The positions are already relative, so we don't need to adjust them
+
+      console.log("Pasted child element:", childCopy.id, "at relative position", childCopy.position);
+      return childCopy;
+    }).filter(Boolean); // Remove any null entries
+
+    // Add the pasted group to the current section
+    document.sections[currentSection.value].elements.push(pastedGroup);
+
+    // Select the pasted group
+    selectedElement.value = pastedGroup;
+    selectedElements.value = [pastedGroup];
+
+    // Enable ungroup since this is a group
+    canUngroup.value = true;
+
+    console.log("Pasted group with", pastedGroup.children.length, "children");
+
+    // Show notification
+    snackbar.value = {
+      show: true,
+      text: `Pasted group with ${pastedGroup.children.length} elements`,
+      color: "success",
+    };
+  } else {
+    // Pasting a regular element
+    console.log("Pasting a regular element of type:", clipboardCopy.type);
+
+    // Generate a new ID for the pasted element
+    clipboardCopy.id = `${clipboardCopy.type}-${timestamp}`;
+
+    // Offset the position slightly to make it clear it's a new element
+    clipboardCopy.position = {
+      x: clipboardCopy.position.x + 20,
+      y: clipboardCopy.position.y + 20
+    };
+
+    // Add the pasted element to the current section
+    document.sections[currentSection.value].elements.push(clipboardCopy);
+
+    // Select the pasted element
+    selectedElement.value = clipboardCopy;
+    selectedElements.value = [clipboardCopy];
+
+    // Update canUngroup (should be false for regular elements)
+    canUngroup.value = false;
+
+    console.log("Pasted element:", clipboardCopy.id);
+
+    // Show notification
+    snackbar.value = {
+      show: true,
+      text: `Pasted ${clipboardCopy.type} element`,
+      color: "success",
+    };
+  }
+
+  // Save the current state to history
+  historyStore.pushState(document);
+}
+
+// Global keyboard event handler to capture Ctrl+Shift+G
+function handleGlobalKeyDown(event: KeyboardEvent) {
+  // Check if Ctrl/Cmd + Shift + G was pressed (ungroup shortcut)
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'g') {
+    // Immediately prevent default to stop browser search from appearing
+    event.preventDefault();
+    event.stopPropagation();
+
+    console.log("Global ungroup shortcut detected");
+    console.log("Currently selected element:", selectedElement.value?.id);
+    console.log("All groups in current section:", document.sections[currentSection.value].elements
+      .filter(e => e.type === 'group')
+      .map(e => e.id));
+
+    // DIRECT APPROACH: If we have a selected element that's a group, ungroup it directly
+    if (selectedElement.value && selectedElement.value.type === 'group') {
+      // Get the ID of the selected group
+      const selectedGroupId = selectedElement.value.id;
+      console.log("Selected group ID:", selectedGroupId);
+
+      // Find this exact group in the document
+      const groupToUngroup = document.sections[currentSection.value].elements.find(
+        e => e.id === selectedGroupId && e.type === 'group'
+      );
+
+      if (groupToUngroup) {
+        console.log("Found the exact selected group in document:", groupToUngroup.id);
+
+        // Directly ungroup this specific group
+        ungroupElement(groupToUngroup);
+      } else {
+        console.log("ERROR: Selected group not found in document:", selectedGroupId);
+
+        // Show notification
+        snackbar.value = {
+          show: true,
+          text: "Cannot ungroup - selected group not found in document",
+          color: "error",
+        };
+      }
+    } else {
+      // If no group is selected, find any group in the current section
+      console.log("No group selected, looking for any group in the section");
+
+      const groupsInSection = document.sections[currentSection.value].elements.filter(
+        element => element.type === 'group' && element.children && element.children.length > 0
+      );
+
+      if (groupsInSection.length > 0) {
+        // If there are groups in the section, ungroup the first one
+        const groupToUngroup = groupsInSection[0];
+        console.log("Found group to ungroup via global keyboard shortcut:", groupToUngroup.id);
+
+        // Directly ungroup this group
+        ungroupElement(groupToUngroup);
+      } else {
+        console.log("No groups found in current section");
+
+        // Show notification
+        snackbar.value = {
+          show: true,
+          text: "No groups found to ungroup",
+          color: "warning",
+        };
+      }
+    }
+
+    // Return false to ensure the event is completely handled
+    return false;
+  }
+}
+
 // Handle keyboard shortcuts
 function handleKeyDown(event: KeyboardEvent) {
-  // Check for Ctrl+S or Cmd+S
-  if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+  // Check if Ctrl/Cmd key is pressed
+  const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+
+  console.log("Key pressed:", event.key, "Ctrl/Cmd:", isCtrlOrCmd, "Shift:", event.shiftKey);
+
+  // Ctrl/Cmd + S to save
+  if (isCtrlOrCmd && event.key === "s") {
     event.preventDefault(); // Prevent browser's save dialog
+    console.log("Save shortcut detected");
     saveDocument();
+  }
+
+  // Ctrl/Cmd + Z to undo
+  if (isCtrlOrCmd && event.key === "z" && !event.shiftKey) {
+    event.preventDefault();
+    console.log("Undo shortcut detected");
+    handleUndo();
+  }
+
+  // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y to redo
+  if (
+    (isCtrlOrCmd && event.shiftKey && event.key === "z") ||
+    (isCtrlOrCmd && event.key === "y")
+  ) {
+    event.preventDefault();
+    console.log("Redo shortcut detected");
+    handleRedo();
+  }
+
+  // Ctrl/Cmd + G to group selected elements
+  if (isCtrlOrCmd && event.key === "g" && !event.shiftKey) {
+    event.preventDefault();
+    console.log("Group shortcut detected. Selected elements:", selectedElements.value.length);
+    if (selectedElements.value.length > 1) {
+      console.log("Grouping elements via keyboard shortcut");
+      groupElements(selectedElements.value);
+    } else {
+      console.log("Cannot group - need multiple elements selected");
+    }
+  }
+
+  // Ctrl/Cmd + Shift + G to ungroup
+  if (isCtrlOrCmd && event.shiftKey && event.key.toLowerCase() === "g") {
+    // Immediately prevent default to stop browser search from appearing
+    event.preventDefault();
+    event.stopPropagation();
+
+    console.log("Ungroup shortcut detected");
+    console.log("Currently selected element:", selectedElement.value?.id);
+    console.log("All groups in current section:", document.sections[currentSection.value].elements
+      .filter(e => e.type === 'group')
+      .map(e => e.id));
+
+    // DIRECT APPROACH: If we have a selected element that's a group, ungroup it directly
+    if (selectedElement.value && selectedElement.value.type === 'group') {
+      // Get the ID of the selected group
+      const selectedGroupId = selectedElement.value.id;
+      console.log("Selected group ID:", selectedGroupId);
+
+      // Find this exact group in the document
+      const groupToUngroup = document.sections[currentSection.value].elements.find(
+        e => e.id === selectedGroupId && e.type === 'group'
+      );
+
+      if (groupToUngroup) {
+        console.log("Found the exact selected group in document:", groupToUngroup.id);
+
+        // Directly ungroup this specific group
+        ungroupElement(groupToUngroup);
+      } else {
+        console.log("ERROR: Selected group not found in document:", selectedGroupId);
+
+        // Show notification
+        snackbar.value = {
+          show: true,
+          text: "Cannot ungroup - selected group not found in document",
+          color: "error",
+        };
+      }
+    } else {
+      // If no group is selected, find any group in the current section
+      console.log("No group selected, looking for any group in the section");
+
+      const groupsInSection = document.sections[currentSection.value].elements.filter(
+        element => element.type === 'group' && element.children && element.children.length > 0
+      );
+
+      if (groupsInSection.length > 0) {
+        // If there are groups in the section, ungroup the first one
+        const groupToUngroup = groupsInSection[0];
+        console.log("Found group to ungroup via keyboard shortcut:", groupToUngroup.id);
+
+        // Directly ungroup this group
+        ungroupElement(groupToUngroup);
+      } else {
+        console.log("No groups found in current section");
+
+        // Show notification
+        snackbar.value = {
+          show: true,
+          text: "No groups found to ungroup",
+          color: "warning",
+        };
+      }
+    }
+
+    // Return false to ensure the event is completely handled
+    return false;
+  }
+
+  // Ctrl/Cmd + C to copy
+  if (isCtrlOrCmd && event.key === "c") {
+    event.preventDefault();
+    console.log("Copy shortcut detected");
+    copySelectedElements();
+  }
+
+  // Ctrl/Cmd + V to paste
+  if (isCtrlOrCmd && event.key === "v") {
+    event.preventDefault();
+    console.log("Paste shortcut detected");
+    pasteFromClipboard();
   }
 }
 
@@ -1411,6 +2285,12 @@ async function confirmDelete() {
     isDeleting.value = false;
   }
 }
+
+// Clean up event listeners when component is unmounted
+onBeforeUnmount(() => {
+  // Remove the global keydown event listener
+  window.removeEventListener('keydown', handleGlobalKeyDown, true);
+});
 </script>
 
 <style scoped lang="scss">

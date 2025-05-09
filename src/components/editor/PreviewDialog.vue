@@ -138,6 +138,9 @@ const SignatureElement = defineAsyncComponent(
 const FormElement = defineAsyncComponent(
   () => import("./elements/FormElement.vue")
 );
+const GroupElement = defineAsyncComponent(
+  () => import("./elements/GroupElement.vue")
+);
 
 function getElementComponent(type: string) {
   switch (type) {
@@ -153,6 +156,8 @@ function getElementComponent(type: string) {
       return SignatureElement;
     case "form":
       return FormElement;
+    case "group":
+      return GroupElement;
     default:
       return null;
   }

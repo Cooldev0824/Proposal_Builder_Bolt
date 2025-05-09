@@ -139,6 +139,44 @@
 
     <div class="toolbar-divider"></div>
 
+    <div class="toolbar-group">
+      <v-btn
+        icon
+        @click="handleGroupClick"
+        size="small"
+      >
+        <v-icon>mdi-group</v-icon>
+        <v-tooltip activator="parent" location="bottom">Group Elements ({{ canGroup ? 'Enabled' : 'Disabled' }})</v-tooltip>
+      </v-btn>
+      <v-btn
+        icon
+        @click="handleUngroupClick"
+        size="small"
+      >
+        <v-icon>mdi-ungroup</v-icon>
+        <v-tooltip activator="parent" location="bottom">Ungroup Elements</v-tooltip>
+      </v-btn>
+
+      <v-btn
+        icon
+        @click="handleCopyClick"
+        size="small"
+      >
+        <v-icon>mdi-content-copy</v-icon>
+        <v-tooltip activator="parent" location="bottom">Copy (Ctrl+C)</v-tooltip>
+      </v-btn>
+      <v-btn
+        icon
+        @click="handlePasteClick"
+        size="small"
+      >
+        <v-icon>mdi-content-paste</v-icon>
+        <v-tooltip activator="parent" location="bottom">Paste (Ctrl+V)</v-tooltip>
+      </v-btn>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
     <v-spacer></v-spacer>
 
     <div class="toolbar-group">
@@ -249,6 +287,8 @@ const props = defineProps<{
   paperSize?: string;
   orientation?: "portrait" | "landscape";
   isExportingPdf?: boolean;
+  canGroup?: boolean;
+  canUngroup?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -319,6 +359,24 @@ watch(
   { immediate: true }
 );
 
+// Watch for changes to the canGroup prop
+watch(
+  () => props.canGroup,
+  (newValue) => {
+    console.log("canGroup updated in toolbar:", newValue);
+  },
+  { immediate: true }
+);
+
+// Watch for changes to the canUngroup prop
+watch(
+  () => props.canUngroup,
+  (newValue) => {
+    console.log("canUngroup updated in toolbar:", newValue);
+  },
+  { immediate: true }
+);
+
 function isActive(tool: string) {
   return props.activeTools.includes(tool);
 }
@@ -361,6 +419,30 @@ function toggleGrid() {
 function openDocumentSizeDialog() {
   emit("tool-clicked", "document-size");
 }
+
+// Group/ungroup functions
+function handleGroupClick() {
+  console.log("Group button clicked in toolbar");
+  emit("tool-clicked", "group");
+}
+
+function handleUngroupClick() {
+  console.log("Ungroup button clicked in toolbar");
+  emit("tool-clicked", "ungroup");
+}
+
+// Copy/paste functions
+function handleCopyClick() {
+  console.log("Copy button clicked in toolbar");
+  emit("tool-clicked", "copy");
+}
+
+function handlePasteClick() {
+  console.log("Paste button clicked in toolbar");
+  emit("tool-clicked", "paste");
+}
+
+
 </script>
 
 <style scoped lang="scss">

@@ -7,15 +7,15 @@
         <span>{{ getElementName(element) }}</span>
       </div>
     </div>
-    
+
     <div class="layer-actions">
       <v-tooltip location="top" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
-          <v-btn 
+          <v-btn
             v-bind="props"
-            icon 
-            size="small" 
-            color="primary" 
+            icon
+            size="small"
+            color="primary"
             variant="text"
             :disabled="isTopLayer"
             @click.stop="$emit('move-to-top', element)"
@@ -26,14 +26,14 @@
         </template>
         <span>Bring to Front</span>
       </v-tooltip>
-      
+
       <v-tooltip location="top" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
-          <v-btn 
+          <v-btn
             v-bind="props"
-            icon 
-            size="small" 
-            color="primary" 
+            icon
+            size="small"
+            color="primary"
             variant="text"
             :disabled="isTopLayer"
             @click.stop="$emit('move-up', element)"
@@ -44,14 +44,14 @@
         </template>
         <span>Move Up</span>
       </v-tooltip>
-      
+
       <v-tooltip location="top" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
-          <v-btn 
+          <v-btn
             v-bind="props"
-            icon 
-            size="small" 
-            color="primary" 
+            icon
+            size="small"
+            color="primary"
             variant="text"
             :disabled="isBottomLayer"
             @click.stop="$emit('move-down', element)"
@@ -62,14 +62,14 @@
         </template>
         <span>Move Down</span>
       </v-tooltip>
-      
+
       <v-tooltip location="top" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
-          <v-btn 
+          <v-btn
             v-bind="props"
-            icon 
-            size="small" 
-            color="primary" 
+            icon
+            size="small"
+            color="primary"
             variant="text"
             :disabled="isBottomLayer"
             @click.stop="$emit('move-to-bottom', element)"
@@ -114,6 +114,7 @@ function getElementIcon(type: string): string {
     case 'signature': return 'mdi-draw'
     case 'form': return 'mdi-form-select'
     case 'grid': return 'mdi-grid'
+    case 'group': return 'mdi-folder'
     default: return 'mdi-shape-outline'
   }
 }
@@ -121,23 +122,28 @@ function getElementIcon(type: string): string {
 function getElementName(element: DocumentElement): string {
   // Create a user-friendly name based on element type and content
   const prefix = element.type.charAt(0).toUpperCase() + element.type.slice(1)
-  
+
   switch (element.type) {
     case 'text':
       // For text elements, use the first few words
-      const text = typeof element.content === 'string' 
+      const text = typeof element.content === 'string'
         ? element.content.replace(/<[^>]*>/g, '') // Remove HTML tags
         : ''
       const shortText = text.length > 15 ? text.substring(0, 15) + '...' : text
       return shortText || `${prefix}`
-    
+
     case 'shape':
       // For shapes, include the shape type
       return `${prefix}: ${element.content || 'Rectangle'}`
-    
+
     case 'image':
       return `${prefix}`
-    
+
+    case 'group':
+      // For groups, show the number of elements in the group
+      const childCount = element.children?.length || 0
+      return `${prefix} (${childCount})`
+
     default:
       return `${prefix}`
   }
@@ -202,11 +208,11 @@ function getElementName(element: DocumentElement): string {
   min-width: 32px !important;
   width: 32px !important;
   height: 32px !important;
-  
+
   &:hover {
     background-color: rgba(0, 0, 0, 0.05);
   }
-  
+
   &:disabled {
     opacity: 0.5;
   }
