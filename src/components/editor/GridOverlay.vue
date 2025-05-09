@@ -85,8 +85,8 @@ watch(() => props.visible, (newValue) => {
 const gridStyle = computed(() => {
   console.log('Computing grid style, visible:', props.visible)
   return {
-    width: `${props.width}px`,
-    height: `${props.height}px`,
+    // Width and height are now handled by CSS with !important
+    // to ensure they include the rulers
     backgroundSize: `${props.gridSize}px ${props.gridSize}px`,
     backgroundImage: props.visible ?
       `linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
@@ -101,19 +101,21 @@ const gridStyle = computed(() => {
 <style scoped lang="scss">
 .grid-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: -30px; /* Move up to place rulers outside the page */
+  left: -30px; /* Move left to place rulers outside the page */
   pointer-events: none;
   z-index: 0;
   background-color: transparent;
+  width: calc(100% + 30px) !important; /* Extend width to include ruler */
+  height: calc(100% + 30px) !important; /* Extend height to include ruler */
 }
 
 /* Grid lines - only visible when show-grid class is present */
 .grid-overlay.show-grid::before {
   content: '';
   position: absolute;
-  top: 30px; /* Height of horizontal ruler */
-  left: 30px; /* Width of vertical ruler */
+  top: 30px; /* Start at the top of the actual page content */
+  left: 30px; /* Start at the left of the actual page content */
   right: 0;
   bottom: 0;
   background-image:
@@ -128,8 +130,8 @@ const gridStyle = computed(() => {
 .grid-overlay.show-grid::after {
   content: '';
   position: absolute;
-  top: 30px; /* Height of horizontal ruler */
-  left: 30px; /* Width of vertical ruler */
+  top: 30px; /* Start at the top of the actual page content */
+  left: 30px; /* Start at the left of the actual page content */
   right: 0;
   bottom: 0;
   background-image:

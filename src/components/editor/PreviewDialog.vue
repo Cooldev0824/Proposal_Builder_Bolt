@@ -22,13 +22,20 @@
             class="preview-page"
             :style="pageStyle"
           >
+            <!-- Page content without rulers -->
             <div class="page-content">
               <div class="elements-container">
                 <component
                   v-for="element in getSortedElements(section.elements)"
                   :key="element.id"
                   :is="getElementComponent(element.type)"
-                  :element="element"
+                  :element="{
+                    ...element,
+                    position: {
+                      x: Math.max(0, element.position.x - 30),
+                      y: Math.max(0, element.position.y - 30)
+                    }
+                  }"
                   :isSelected="false"
                   :isPreview="true"
                   :style="{ zIndex: element.zIndex || 0 }"
@@ -93,8 +100,8 @@ const pageHeight = computed(() => {
 // Computed style for the page
 const pageStyle = computed(() => {
   return {
-    width: `${pageWidth.value}px`,
-    height: `${pageHeight.value}px`, // Use fixed height instead of minHeight
+    width: `${pageWidth.value - 30}px`, // Subtract ruler width
+    height: `${pageHeight.value - 30}px`, // Subtract ruler height instead of minHeight
     overflow: "hidden", // Hide content that goes outside the document boundaries
   };
 });
@@ -185,12 +192,15 @@ function closePreview() {
   margin: 16px auto;
   position: relative;
   box-sizing: border-box;
+  padding: 0; /* No padding for rulers */
   overflow: hidden; /* Hide content that goes outside the document boundaries */
 
   .page-content {
     position: relative;
     height: 100%; /* Use fixed height instead of min-height */
-    //padding: 24px;
+    width: 100%;
+    padding: 0; /* No padding for rulers */
+    margin: 0; /* No margin for rulers */
     background-color: white;
     box-sizing: border-box;
     overflow: hidden; /* Hide content that goes outside the document boundaries */
@@ -200,6 +210,8 @@ function closePreview() {
     position: relative;
     height: 100%; /* Use fixed height instead of min-height */
     width: 100%;
+    padding: 0; /* No padding for rulers */
+    margin: 0; /* No margin for rulers */
     overflow: hidden; /* Hide content that goes outside the document boundaries */
   }
 }

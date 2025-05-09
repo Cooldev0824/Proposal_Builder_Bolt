@@ -275,11 +275,13 @@ async function exportPdf() {
 
       // Add each element to the page
       for (const element of sortedElements) {
-        // Create a container for the element
+        // Create a container for the element - adjust positions to remove ruler space
         const elementContainer = window.document.createElement("div");
         elementContainer.style.position = "absolute";
-        elementContainer.style.left = `${element.position.x}px`;
-        elementContainer.style.top = `${element.position.y}px`;
+
+        // Explicitly subtract 30px from both x and y to remove ruler space
+        elementContainer.style.left = `${Math.max(0, element.position.x - 30)}px`;
+        elementContainer.style.top = `${Math.max(0, element.position.y - 30)}px`;
         elementContainer.style.width = `${element.size.width}px`;
         elementContainer.style.height = `${element.size.height}px`;
         elementContainer.style.zIndex = `${element.zIndex || 0}`;
