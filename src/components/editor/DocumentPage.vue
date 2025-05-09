@@ -19,12 +19,9 @@
               @mouseenter="hoveredElement = element"
               @mouseleave="hoveredElement = null"
             >
+              <!-- Always show layer controls for selected elements -->
               <ElementLayerControls
-                v-if="
-                  showLayerControls &&
-                  (hoveredElement?.id === element.id ||
-                    selectedElement?.id === element.id)
-                "
+                v-if="selectedElement?.id === element.id"
                 :element="element"
                 :elements="section.elements"
                 :layer-index="index"
@@ -89,11 +86,7 @@ import {
 import { Section, DocumentElement } from "../../types/document";
 import ElementLayerControls from "./ElementLayerControls.vue";
 import GridOverlay from "./GridOverlay.vue";
-import {
-  getPaperSizeByName,
-  DEFAULT_PAPER_SIZE,
-  getLandscapeSize,
-} from "../../utils/paperSizes";
+import { getPaperSizeByName, getLandscapeSize } from "../../utils/paperSizes";
 
 // Lazy-loaded element components with error handling
 const TextElement = defineAsyncComponent({
@@ -185,7 +178,6 @@ const pageContent = ref<HTMLElement | null>(null);
 const selectedElement = ref<DocumentElement | null>(null);
 const hoveredElement = ref<DocumentElement | null>(null);
 const elementRefs = ref<any[]>([]);
-const showLayerControls = ref(true); // Always show layer controls
 const showGrid = ref(true); // Default to true, will be updated when props change
 const gridSize = ref(10); // Grid size in pixels (each small square is 10px)
 
@@ -276,6 +268,7 @@ function getElementComponent(type: string) {
 
 function selectElement(element: DocumentElement) {
   selectedElement.value = element;
+  console.log("Element selected:", element.id, element.type);
   emit("element-selected", element);
 }
 
@@ -310,13 +303,13 @@ function toggleGrid() {
   emit("toggle-grid", showGrid.value);
 }
 
-// Function to snap position to grid
-function snapToGrid(position: { x: number; y: number }) {
-  return {
-    x: Math.round(position.x / gridSize.value) * gridSize.value,
-    y: Math.round(position.y / gridSize.value) * gridSize.value,
-  };
-}
+// Function to snap position to grid (commented out as currently unused)
+// function snapToGrid(position: { x: number; y: number }) {
+//   return {
+//     x: Math.round(position.x / gridSize.value) * gridSize.value,
+//     y: Math.round(position.y / gridSize.value) * gridSize.value,
+//   };
+// }
 
 // Text selection is now handled by the global selection manager
 
@@ -366,6 +359,7 @@ onErrorCaptured((error, instance, info) => {
 
 .element-wrapper {
   position: relative;
+  margin-top: 40px; /* Add space for the layer controls */
 
   // We no longer force z-index on hover to maintain proper layer ordering
   // Layer controls will be visible due to their own z-index
