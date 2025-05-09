@@ -1,3 +1,105 @@
+<script setup lang="ts">
+// 1. Imports
+import { ref, watch } from "vue";
+import { DocumentElement } from "../../types/document";
+import TextProperties from "./properties/TextProperties.vue";
+import ImageProperties from "./properties/ImageProperties.vue";
+import ShapeProperties from "./properties/ShapeProperties.vue";
+import TableProperties from "./properties/TableProperties.vue";
+import FormProperties from "./properties/FormProperties.vue";
+
+// Import styles
+import '../../assets/styles/components/propertiesPanel.scss';
+
+// 2. Functions
+function getPropertiesComponent(type: string) {
+  switch (type) {
+    case "text":
+      return TextProperties;
+    case "image":
+      return ImageProperties;
+    case "shape":
+      return ShapeProperties;
+    case "table":
+      return TableProperties;
+    case "form":
+      return FormProperties;
+    default:
+      return null;
+  }
+}
+
+function formatElementType(type: string): string {
+  return type.charAt(0).toUpperCase() + type.slice(1) + " Element";
+}
+
+function updatePosition() {
+  if (!props.selectedElement) return;
+
+  const updatedElement = {
+    ...props.selectedElement,
+    position: { ...position.value },
+  };
+
+  emit("update:element", updatedElement);
+}
+
+function updateSize() {
+  if (!props.selectedElement) return;
+
+  const updatedElement = {
+    ...props.selectedElement,
+    size: { ...size.value },
+  };
+
+  emit("update:element", updatedElement);
+}
+
+function updateElement(element: DocumentElement) {
+  emit("update:element", element);
+}
+
+function deleteElement() {
+  if (!props.selectedElement) return;
+  emit("delete-element", props.selectedElement);
+}
+
+function duplicateElement() {
+  if (!props.selectedElement) return;
+  emit("duplicate-element", props.selectedElement);
+}
+
+function closePanel() {
+  emit("close");
+}
+
+// 3. Hooks and Reactive State
+const props = defineProps<{
+  selectedElement: DocumentElement | null;
+}>();
+
+const emit = defineEmits<{
+  (e: "update:element", element: DocumentElement): void;
+  (e: "delete-element", element: DocumentElement): void;
+  (e: "duplicate-element", element: DocumentElement): void;
+  (e: "close"): void;
+}>();
+
+const position = ref({ x: 0, y: 0 });
+const size = ref({ width: 0, height: 0 });
+
+watch(
+  () => props.selectedElement,
+  (newValue) => {
+    if (newValue) {
+      position.value = { ...newValue.position };
+      size.value = { ...newValue.size };
+    }
+  },
+  { immediate: true, deep: true }
+);
+</script>
+
 <template>
   <div v-if="selectedElement" class="properties-panel">
     <div class="panel-header">
@@ -94,161 +196,4 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, watch } from "vue";
-import { DocumentElement } from "../../types/document";
-import TextProperties from "./properties/TextProperties.vue";
-import ImageProperties from "./properties/ImageProperties.vue";
-import ShapeProperties from "./properties/ShapeProperties.vue";
-import TableProperties from "./properties/TableProperties.vue";
-import FormProperties from "./properties/FormProperties.vue";
 
-const props = defineProps<{
-  selectedElement: DocumentElement | null;
-}>();
-
-const emit = defineEmits<{
-  (e: "update:element", element: DocumentElement): void;
-  (e: "delete-element", element: DocumentElement): void;
-  (e: "duplicate-element", element: DocumentElement): void;
-  (e: "close"): void;
-}>();
-
-const position = ref({ x: 0, y: 0 });
-const size = ref({ width: 0, height: 0 });
-
-watch(
-  () => props.selectedElement,
-  (newValue) => {
-    if (newValue) {
-      position.value = { ...newValue.position };
-      size.value = { ...newValue.size };
-    }
-  },
-  { immediate: true, deep: true }
-);
-
-function getPropertiesComponent(type: string) {
-  switch (type) {
-    case "text":
-      return TextProperties;
-    case "image":
-      return ImageProperties;
-    case "shape":
-      return ShapeProperties;
-    case "table":
-      return TableProperties;
-    case "form":
-      return FormProperties;
-    default:
-      return null;
-  }
-}
-
-function formatElementType(type: string): string {
-  return type.charAt(0).toUpperCase() + type.slice(1) + " Element";
-}
-
-function updatePosition() {
-  if (!props.selectedElement) return;
-
-  const updatedElement = {
-    ...props.selectedElement,
-    position: { ...position.value },
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function updateSize() {
-  if (!props.selectedElement) return;
-
-  const updatedElement = {
-    ...props.selectedElement,
-    size: { ...size.value },
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function updateElement(element: DocumentElement) {
-  emit("update:element", element);
-}
-
-function deleteElement() {
-  if (!props.selectedElement) return;
-  emit("delete-element", props.selectedElement);
-}
-
-function duplicateElement() {
-  if (!props.selectedElement) return;
-  emit("duplicate-element", props.selectedElement);
-}
-
-function closePanel() {
-  emit("close");
-}
-</script>
-
-<style scoped lang="scss">
-.properties-panel {
-  background-color: var(--background);
-  border-left: 1px solid var(--border);
-  width: 280px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.panel-title {
-  font-size: 16px;
-  font-weight: 500;
-  margin: 0;
-}
-
-.panel-content {
-  padding: 16px;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.element-type {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.property-group {
-  margin-bottom: 16px;
-}
-
-.property-group-title {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.property-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.position-input {
-  flex: 1;
-}
-
-.actions-row {
-  margin-bottom: 8px;
-}
-</style>

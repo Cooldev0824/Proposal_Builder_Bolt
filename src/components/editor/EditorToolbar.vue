@@ -1,3 +1,94 @@
+<script setup lang="ts">
+// 1. Imports
+import { ref, watch } from "vue";
+import { PAPER_SIZES } from "../../utils/paperSizes";
+
+// Import styles
+import '../../assets/styles/components/editorToolbar.scss';
+
+// 2. Functions
+function isActive(tool: string) {
+  return props.activeTools.includes(tool);
+}
+
+// Paper size functions
+function openDocumentSizeDialog() {
+  emit("tool-clicked", "document-size");
+}
+
+// 3. Hooks and Reactive State
+
+const props = defineProps<{
+  activeTools: string[];
+  showGrid?: boolean;
+  isSaving?: boolean;
+  saveSuccess?: boolean;
+  saveError?: boolean;
+  saveMessage?: string;
+  documentTitle?: string;
+  documentId?: string;
+  paperSize?: string;
+  orientation?: "portrait" | "landscape";
+  isExportingPdf?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: "tool-clicked", tool: string, value?: any): void;
+  (e: "save"): void;
+  (e: "navigate-to-dashboard"): void;
+  (e: "delete-document"): void;
+}>();
+
+// UI state
+const showGrid = ref(true); // Default to true
+
+// Paper size state
+const paperSizes = PAPER_SIZES;
+const selectedPaperSize = ref(
+  paperSizes.find((size) => size.name === props.paperSize) ||
+    paperSizes.find((size) => size.name === "Letter") ||
+    paperSizes[0]
+);
+const selectedOrientation = ref(props.orientation || "portrait");
+
+// Watch for changes to the paperSize prop
+watch(
+  () => props.paperSize,
+  (newValue) => {
+    if (newValue) {
+      const paperSize = paperSizes.find((size) => size.name === newValue);
+      if (paperSize) {
+        selectedPaperSize.value = paperSize;
+      }
+    }
+  },
+  { immediate: true }
+);
+
+// Watch for changes to the orientation prop
+watch(
+  () => props.orientation,
+  (newValue) => {
+    if (newValue) {
+      selectedOrientation.value = newValue;
+    }
+  },
+  { immediate: true }
+);
+
+// Watch for changes to the showGrid prop
+watch(
+  () => props.showGrid,
+  (newValue) => {
+    if (newValue !== undefined) {
+      showGrid.value = newValue;
+      console.log("Grid visibility updated in toolbar:", showGrid.value);
+    }
+  },
+  { immediate: true }
+);
+</script>
+
 <template>
   <div class="editor-toolbar">
     <div class="toolbar-group">
@@ -212,215 +303,4 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, watch } from "vue";
-import { useHistoryStore } from "../../stores/historyStore";
-import { PAPER_SIZES } from "../../utils/paperSizes";
 
-const historyStore = useHistoryStore();
-
-const props = defineProps<{
-  activeTools: string[];
-  showGrid?: boolean;
-  isSaving?: boolean;
-  saveSuccess?: boolean;
-  saveError?: boolean;
-  saveMessage?: string;
-  documentTitle?: string;
-  documentId?: string;
-  paperSize?: string;
-  orientation?: "portrait" | "landscape";
-  isExportingPdf?: boolean;
-}>();
-
-const emit = defineEmits<{
-  (e: "tool-clicked", tool: string, value?: any): void;
-  (e: "save"): void;
-  (e: "navigate-to-dashboard"): void;
-  (e: "delete-document"): void;
-}>();
-
-const canUndo = computed(() => historyStore.canUndo());
-const canRedo = computed(() => historyStore.canRedo());
-
-// Text formatting state
-const textFormat = ref("Paragraph");
-const fontFamily = ref("Roboto");
-const isBold = ref(false);
-const isItalic = ref(false);
-const isUnderline = ref(false);
-const textAlign = ref("left");
-
-// UI state
-const showGrid = ref(true); // Default to true
-
-// Paper size state
-const paperSizes = PAPER_SIZES;
-const selectedPaperSize = ref(
-  paperSizes.find((size) => size.name === props.paperSize) ||
-    paperSizes.find((size) => size.name === "Letter") ||
-    paperSizes[0]
-);
-const selectedOrientation = ref(props.orientation || "portrait");
-
-// Watch for changes to the paperSize prop
-watch(
-  () => props.paperSize,
-  (newValue) => {
-    if (newValue) {
-      const paperSize = paperSizes.find((size) => size.name === newValue);
-      if (paperSize) {
-        selectedPaperSize.value = paperSize;
-      }
-    }
-  },
-  { immediate: true }
-);
-
-// Watch for changes to the orientation prop
-watch(
-  () => props.orientation,
-  (newValue) => {
-    if (newValue) {
-      selectedOrientation.value = newValue;
-    }
-  },
-  { immediate: true }
-);
-
-// Watch for changes to the showGrid prop
-watch(
-  () => props.showGrid,
-  (newValue) => {
-    if (newValue !== undefined) {
-      showGrid.value = newValue;
-      console.log("Grid visibility updated in toolbar:", showGrid.value);
-    }
-  },
-  { immediate: true }
-);
-
-function isActive(tool: string) {
-  return props.activeTools.includes(tool);
-}
-
-function toggleBold() {
-  isBold.value = !isBold.value;
-  emit("tool-clicked", "format-bold", isBold.value);
-}
-
-function toggleItalic() {
-  isItalic.value = !isItalic.value;
-  emit("tool-clicked", "format-italic", isItalic.value);
-}
-
-function toggleUnderline() {
-  isUnderline.value = !isUnderline.value;
-  emit("tool-clicked", "format-underline", isUnderline.value);
-}
-
-function setTextAlign(align: string) {
-  textAlign.value = align;
-  emit("tool-clicked", "text-align", align);
-}
-
-// Ruler functionality removed
-
-function toggleGrid() {
-  // Toggle the grid visibility locally
-  showGrid.value = !showGrid.value;
-  console.log("Grid toggled in toolbar:", showGrid.value);
-
-  // Emit the event to notify parent components
-  emit("tool-clicked", "grid", showGrid.value);
-}
-
-// Paper size functions
-function openDocumentSizeDialog() {
-  emit("tool-clicked", "document-size");
-}
-</script>
-
-<style scoped lang="scss">
-.editor-toolbar {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  background-color: var(--background);
-  border-bottom: 1px solid var(--border);
-  z-index: 10;
-}
-
-.toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  &.text-formatting {
-    gap: 8px;
-  }
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 24px;
-  background-color: var(--border);
-  margin: 0 12px;
-}
-
-.font-select {
-  width: 140px;
-}
-
-.document-size-btn {
-  min-width: 150px;
-}
-
-@media (max-width: 1200px) {
-  .toolbar-group {
-    &.text-formatting {
-      .font-select {
-        width: 120px;
-      }
-    }
-  }
-}
-
-@media (max-width: 768px) {
-  .editor-toolbar {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .toolbar-divider {
-    display: none;
-  }
-}
-
-.save-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 8px;
-  font-size: 14px;
-
-  .text-success {
-    color: var(--success);
-  }
-
-  .text-error {
-    color: var(--error);
-  }
-}
-
-.document-title {
-  font-size: 16px;
-  font-weight: 500;
-  margin-left: 16px;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 300px;
-}
-</style>

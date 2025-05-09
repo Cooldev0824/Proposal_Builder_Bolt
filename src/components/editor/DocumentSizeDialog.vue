@@ -5,7 +5,7 @@
         <v-icon class="mr-2">mdi-file-document-outline</v-icon>
         Document Size
       </v-card-title>
-      
+
       <v-card-text>
         <div class="document-size-container">
           <!-- Left side: Paper size selection -->
@@ -33,12 +33,12 @@
               </v-list-item>
             </v-list>
           </div>
-          
+
           <!-- Right side: Preview and orientation -->
           <div class="preview-column">
             <div class="section-title">Preview</div>
             <div class="paper-preview-container">
-              <div 
+              <div
                 class="paper-preview-large"
                 :style="getLargePreviewStyle(selectedPaperSize, selectedOrientation)"
               >
@@ -53,7 +53,7 @@
                 </div>
               </div>
             </div>
-            
+
             <div class="orientation-selector">
               <div class="section-title mt-4">Orientation</div>
               <v-btn-toggle
@@ -74,7 +74,7 @@
           </div>
         </div>
       </v-card-text>
-      
+
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn text @click="cancel">Cancel</v-btn>
@@ -87,6 +87,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { PAPER_SIZES, PaperSize } from '../../utils/paperSizes';
+
+// Import styles
+import '../../assets/styles/components/documentSizeDialog.scss';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -110,8 +113,8 @@ const paperSizes = PAPER_SIZES;
 
 // Initialize with current paper size or default to A4
 const selectedPaperSize = ref(
-  paperSizes.find(size => size.name === props.paperSize) || 
-  paperSizes.find(size => size.name === 'A4') || 
+  paperSizes.find(size => size.name === props.paperSize) ||
+  paperSizes.find(size => size.name === 'A4') ||
   paperSizes[0]
 );
 
@@ -154,9 +157,9 @@ function getIconStyle(size: PaperSize) {
   const aspectRatio = size.width / size.height;
   const maxWidth = 24; // Maximum width in pixels
   const maxHeight = 32; // Maximum height in pixels
-  
+
   let width, height;
-  
+
   if (aspectRatio > 1) {
     // Landscape or wider paper
     width = maxWidth;
@@ -166,7 +169,7 @@ function getIconStyle(size: PaperSize) {
     height = maxHeight;
     width = height * aspectRatio;
   }
-  
+
   return {
     width: `${width}px`,
     height: `${height}px`,
@@ -180,9 +183,9 @@ function getLargePreviewStyle(size: PaperSize, orientation: 'portrait' | 'landsc
   const aspectRatio = size.width / size.height;
   const maxWidth = 250; // Maximum width in pixels
   const maxHeight = 350; // Maximum height in pixels
-  
+
   let width, height;
-  
+
   if (orientation === 'landscape') {
     // Swap width and height for landscape
     if (1/aspectRatio > 1) {
@@ -206,7 +209,7 @@ function getLargePreviewStyle(size: PaperSize, orientation: 'portrait' | 'landsc
       width = height * aspectRatio;
     }
   }
-  
+
   return {
     width: `${width}px`,
     height: `${height}px`,
@@ -225,105 +228,4 @@ function getDimensionsText(size: PaperSize, orientation: 'portrait' | 'landscape
 }
 </script>
 
-<style scoped>
-.dialog-title {
-  background-color: var(--v-primary-base);
-  color: white;
-  padding: 16px;
-}
 
-.document-size-container {
-  display: flex;
-  gap: 24px;
-  padding: 16px 0;
-}
-
-.paper-size-column {
-  flex: 1;
-  max-width: 300px;
-}
-
-.preview-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 12px;
-}
-
-.paper-size-list {
-  border: 1px solid var(--v-border-color);
-  border-radius: 4px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.paper-size-list-item {
-  border-bottom: 1px solid var(--v-border-color);
-}
-
-.paper-size-icon {
-  margin-right: 8px;
-}
-
-.paper-preview-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.paper-preview-large {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 16px;
-}
-
-.preview-content {
-  width: 80%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.preview-text-line {
-  height: 8px;
-  background-color: #e0e0e0;
-  border-radius: 4px;
-  width: 100%;
-}
-
-.paper-dimensions {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 10px;
-  color: #757575;
-}
-
-.orientation-toggle {
-  width: 100%;
-}
-
-.orientation-btn {
-  flex: 1;
-}
-
-@media (max-width: 600px) {
-  .document-size-container {
-    flex-direction: column;
-  }
-  
-  .paper-size-column {
-    max-width: 100%;
-  }
-}
-</style>

@@ -1,69 +1,13 @@
-<template>
-  <div class="grid-layout" ref="gridContainer">
-    <div class="grid-stack">
-      <div v-for="(item, index) in items" :key="index" class="grid-stack-item" :gs-x="item.x" :gs-y="item.y" :gs-w="item.w" :gs-h="item.h">
-        <div class="grid-stack-item-content">
-          <div class="item-header">
-            <span class="item-title">{{ item.title }}</span>
-            <div class="item-actions">
-              <v-btn icon size="small" @click="editItem(index)">
-                <v-icon>mdi-pencil</v-icon>
-              </v-btn>
-              <v-btn icon size="small" color="error" @click="removeItem(index)">
-                <v-icon>mdi-delete</v-icon>
-              </v-btn>
-            </div>
-          </div>
-          <div class="item-content" v-html="item.content"></div>
-        </div>
-      </div>
-    </div>
-
-    <v-btn
-      color="primary"
-      class="add-block-btn"
-      @click="showAddDialog = true"
-    >
-      <v-icon left>mdi-plus</v-icon>
-      Add Block
-    </v-btn>
-
-    <!-- Add/Edit Block Dialog -->
-    <v-dialog v-model="showAddDialog" max-width="600">
-      <v-card>
-        <v-card-title>{{ editingIndex === null ? 'Add Block' : 'Edit Block' }}</v-card-title>
-        <v-card-text>
-          <v-text-field
-            v-model="editingItem.title"
-            label="Block Title"
-            variant="outlined"
-            density="comfortable"
-            class="mb-4"
-          ></v-text-field>
-          
-          <v-textarea
-            v-model="editingItem.content"
-            label="Block Content"
-            variant="outlined"
-            density="comfortable"
-            rows="5"
-          ></v-textarea>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="showAddDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="saveItem">Save</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-  </div>
-</template>
-
 <script setup lang="ts">
+// 1. Imports
 import { ref, onMounted, onUnmounted } from 'vue'
 import { GridStack } from 'gridstack'
 import 'gridstack/dist/gridstack.min.css'
 
+// Import styles
+import '../../assets/styles/components/gridLayout.scss'
+
+// Type definitions
 interface GridItem {
   x: number
   y: number
@@ -73,44 +17,7 @@ interface GridItem {
   content: string
 }
 
-const gridContainer = ref<HTMLElement | null>(null)
-const items = ref<GridItem[]>([])
-let grid: GridStack | null = null
-
-const showAddDialog = ref(false)
-const editingIndex = ref<number | null>(null)
-const editingItem = ref<Partial<GridItem>>({
-  title: '',
-  content: ''
-})
-
-onMounted(() => {
-  if (gridContainer.value) {
-    grid = GridStack.init({
-      column: 12,
-      cellHeight: 60,
-      animate: true,
-      float: true,
-      resizable: {
-        handles: 'all'
-      },
-      draggable: {
-        handle: '.item-header'
-      }
-    }, gridContainer.value.querySelector('.grid-stack'))
-
-    grid.on('change', (event, items) => {
-      updateItemsPositions(items)
-    })
-  }
-})
-
-onUnmounted(() => {
-  if (grid) {
-    grid.destroy()
-  }
-})
-
+// 2. Functions
 function updateItemsPositions(gridItems: any[]) {
   gridItems.forEach((gridItem) => {
     const index = parseInt(gridItem.el.getAttribute('gs-id'))
@@ -184,6 +91,46 @@ function removeItem(index: number) {
   }
 }
 
+// 3. Hooks and Reactive State
+const gridContainer = ref<HTMLElement | null>(null)
+const items = ref<GridItem[]>([])
+let grid: GridStack | null = null
+
+const showAddDialog = ref(false)
+const editingIndex = ref<number | null>(null)
+const editingItem = ref<Partial<GridItem>>({
+  title: '',
+  content: ''
+})
+
+onMounted(() => {
+  if (gridContainer.value) {
+    grid = GridStack.init({
+      column: 12,
+      cellHeight: 60,
+      animate: true,
+      float: true,
+      resizable: {
+        handles: 'all'
+      },
+      draggable: {
+        handle: '.item-header'
+      }
+    }, gridContainer.value.querySelector('.grid-stack') as HTMLElement)
+
+    grid.on('change', (_event: any, changedItems: any[]) => {
+      updateItemsPositions(changedItems)
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (grid) {
+    grid.destroy()
+  }
+})
+
+// Expose public methods
 defineExpose({
   addItem,
   removeItem,
@@ -191,65 +138,64 @@ defineExpose({
 })
 </script>
 
-<style scoped lang="scss">
-.grid-layout {
-  width: 100%;
-  height: 100%;
-  padding: 20px;
-  background-color: var(--surface);
-  position: relative;
-}
+<template>
+  <div class="grid-layout" ref="gridContainer">
+    <div class="grid-stack">
+      <div v-for="(item, index) in items" :key="index" class="grid-stack-item" :gs-x="item.x" :gs-y="item.y" :gs-w="item.w" :gs-h="item.h">
+        <div class="grid-stack-item-content">
+          <div class="item-header">
+            <span class="item-title">{{ item.title }}</span>
+            <div class="item-actions">
+              <v-btn icon size="small" @click="editItem(index)">
+                <v-icon>mdi-pencil</v-icon>
+              </v-btn>
+              <v-btn icon size="small" color="error" @click="removeItem(index)">
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+            </div>
+          </div>
+          <div class="item-content" v-html="item.content"></div>
+        </div>
+      </div>
+    </div>
 
-:deep(.grid-stack) {
-  background: var(--background);
-  min-height: 480px;
-}
+    <v-btn
+      color="primary"
+      class="add-block-btn"
+      @click="showAddDialog = true"
+    >
+      <v-icon left>mdi-plus</v-icon>
+      Add Block
+    </v-btn>
 
-:deep(.grid-stack-item) {
-  border: 1px solid var(--border);
-  background: white;
-  border-radius: 4px;
-  
-  &:hover {
-    border-color: var(--primary);
-  }
-  
-  .grid-stack-item-content {
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-}
+    <!-- Add/Edit Block Dialog -->
+    <v-dialog v-model="showAddDialog" max-width="600">
+      <v-card>
+        <v-card-title>{{ editingIndex === null ? 'Add Block' : 'Edit Block' }}</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="editingItem.title"
+            label="Block Title"
+            variant="outlined"
+            density="comfortable"
+            class="mb-4"
+          ></v-text-field>
 
-.item-header {
-  padding: 8px 12px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: move;
-  
-  .item-title {
-    font-weight: 500;
-  }
-  
-  .item-actions {
-    display: flex;
-    gap: 4px;
-  }
-}
+          <v-textarea
+            v-model="editingItem.content"
+            label="Block Content"
+            variant="outlined"
+            density="comfortable"
+            rows="5"
+          ></v-textarea>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="showAddDialog = false">Cancel</v-btn>
+          <v-btn color="primary" @click="saveItem">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
 
-.item-content {
-  padding: 12px;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.add-block-btn {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-}
-</style>

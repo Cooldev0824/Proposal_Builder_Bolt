@@ -75,118 +75,105 @@
 </template>
 
 <script setup lang="ts">
+// 1. Imports
 import {
   ref,
   computed,
-  defineAsyncComponent,
-  onErrorCaptured,
   watch,
   nextTick,
   onMounted,
   onBeforeUnmount,
+  onErrorCaptured,
+  type CSSProperties
 } from "vue";
 import { Section, DocumentElement } from "../../types/document";
 import ElementToolbar from "./ElementToolbar.vue";
 import { getPaperSizeByName, getLandscapeSize } from "../../utils/paperSizes";
+import { getElementComponent } from "../../utils/elementComponentLoader";
 
-// Lazy-loaded element components with error handling
-const TextElement = defineAsyncComponent({
-  loader: () => import("./elements/TextElement.vue"),
-  timeout: 3000,
-  errorComponent: {
-    template: '<div class="error-loading">Error loading text element</div>',
-  },
-});
+// Import styles
+import '../../assets/styles/components/documentPage.scss';
 
-const ImageElement = defineAsyncComponent({
-  loader: () => import("./elements/ImageElement.vue"),
-  timeout: 3000,
-  errorComponent: {
-    template: '<div class="error-loading">Error loading image element</div>',
-  },
-});
+// 2. Types
+/**
+ * Element position information for toolbar positioning
+ */
+interface ElementPosition {
+  top: number;
+  left: number;
+  width: number;
+}
 
-const ShapeElement = defineAsyncComponent({
-  loader: () => import("./elements/ShapeElement.vue"),
-  timeout: 3000,
-  errorComponent: {
-    template: '<div class="error-loading">Error loading shape element</div>',
-  },
-});
+/**
+ * Drawing rectangle style
+ */
+interface DrawingRectStyle {
+  left: string;
+  top: string;
+  width: string;
+  height: string;
+}
 
-const TableElement = defineAsyncComponent({
-  loader: () => import("./elements/SimpleTableElement.vue"),
-  timeout: 3000,
-  errorComponent: {
-    template: '<div class="error-loading">Error loading table element</div>',
-  },
-});
-
-const SignatureElement = defineAsyncComponent({
-  loader: () => import("./elements/SignatureElement.vue"),
-  timeout: 3000,
-  errorComponent: {
-    template:
-      '<div class="error-loading">Error loading signature element</div>',
-  },
-});
-
-const FormElement = defineAsyncComponent({
-  loader: () => import("./elements/FormElement.vue"),
-  timeout: 3000,
-  errorComponent: {
-    template: '<div class="error-loading">Error loading form element</div>',
-  },
-});
-
-const GridBlockElement = defineAsyncComponent({
-  loader: () => import("./elements/GridBlockElement.vue"),
-  timeout: 3000,
-  errorComponent: {
-    template:
-      '<div class="error-loading">Error loading grid block element</div>',
-  },
-});
-
+// 3. Props and Emits
+/**
+ * Component props
+ */
 const props = defineProps<{
+  /** The section data to display */
   section: Section;
+  /** Whether this section is currently active */
   isActive: boolean;
+  /** Whether to show the grid */
   showGrid?: boolean;
+  /** Whether the user is currently drawing a selection rectangle */
   isDrawing?: boolean;
+  /** The paper size for the document */
   paperSize?: string;
+  /** The orientation of the document */
   orientation?: "portrait" | "landscape";
-  drawingRectStyle?: {
-    left: string;
-    top: string;
-    width: string;
-    height: string;
-  };
+  /** Style for the drawing rectangle */
+  drawingRectStyle?: DrawingRectStyle;
 }>();
 
 const { section, isActive } = props;
 
+/**
+ * Component events
+ */
 const emit = defineEmits<{
+  /** Emitted when an element is selected */
   (e: "element-selected", element: DocumentElement | null): void;
+  /** Emitted when an element is updated */
   (e: "element-updated", element: DocumentElement): void;
+  /** Move the element up one layer */
   (e: "move-element-up", element: DocumentElement): void;
+  /** Move the element down one layer */
   (e: "move-element-down", element: DocumentElement): void;
+  /** Move the element to the top of all layers */
   (e: "move-element-to-top", element: DocumentElement): void;
+  /** Move the element to the bottom of all layers */
   (e: "move-element-to-bottom", element: DocumentElement): void;
 }>();
 
+// 4. Reactive State
+/** Reference to the page content element */
 const pageContent = ref<HTMLElement | null>(null);
+/** The currently selected element */
 const selectedElement = ref<DocumentElement | null>(null);
+/** The element currently being hovered over */
 const hoveredElement = ref<DocumentElement | null>(null);
+/** References to element components */
 const elementRefs = ref<any[]>([]);
+/** Whether to show the grid */
 const showGrid = ref(true); // Default to true, will be updated when props change
-const selectedElementPosition = ref<{
-  top: number;
-  left: number;
-  width: number;
-} | null>(null);
+/** Position information for the selected element */
+const selectedElementPosition = ref<ElementPosition | null>(null);
 
-// Page dimensions based on paper size
-const pageWidth = computed(() => {
+// 5. Computed Properties
+/**
+ * Calculate the page width based on paper size and orientation
+ */
+const pageWidth = computed((): number => {
   const paperSizeName = props.paperSize || "Letter";
   const orientation = props.orientation || "portrait";
 
@@ -200,7 +187,10 @@ const pageWidth = computed(() => {
   return paperSize.width;
 });
 
-const pageHeight = computed(() => {
+/**
+ * Calculate the page height based on paper size and orientation
+ */
+const pageHeight = computed((): number => {
   const paperSizeName = props.paperSize || "Letter";
   const orientation = props.orientation || "portrait";
 
@@ -214,40 +204,22 @@ const pageHeight = computed(() => {
   return paperSize.height;
 });
 
-// Watch for changes to the showGrid prop
-watch(
-  () => props.showGrid,
-  (newValue) => {
-    if (newValue !== undefined) {
-      showGrid.value = newValue;
-      console.log("Grid visibility updated from prop:", showGrid.value);
-    }
-  },
-  { immediate: true }
-);
-
-// Watch for changes to the selected element to update its position
-watch(
-  () => selectedElement.value,
-  () => {
-    // Use nextTick to ensure the DOM has updated
-    nextTick(() => {
-      calculateSelectedElementPosition();
-    });
-  }
-);
-
-const pageStyle = computed(() => {
+/**
+ * Calculate the style for the page element
+ */
+const pageStyle = computed((): CSSProperties => {
   return {
     width: `${pageWidth.value}px`,
-    height: `${pageHeight.value}px`, // Use fixed height instead of minHeight
+    height: `${pageHeight.value}px`,
     position: "relative",
     overflow: "hidden", // Hide content that goes outside the document boundaries
   };
 });
 
-// Sort elements by zIndex for proper layering
-const sortedElements = computed(() => {
+/**
+ * Sort elements by zIndex for proper layering
+ */
+const sortedElements = computed((): DocumentElement[] => {
   if (!section?.elements) return [];
 
   // Make a copy of the elements array to avoid modifying the original
@@ -259,31 +231,40 @@ const sortedElements = computed(() => {
   });
 });
 
-function getElementComponent(type: string) {
-  switch (type) {
-    case "text":
-      return TextElement;
-    case "image":
-      return ImageElement;
-    case "shape":
-      return ShapeElement;
-    case "table":
-      return TableElement;
-    case "signature":
-      return SignatureElement;
-    case "form":
-      return FormElement;
-    case "grid":
-      return GridBlockElement;
-    default:
-      console.warn(`Unknown element type: ${type}`);
-      return null;
-  }
-}
+// 6. Watch Effects
+/**
+ * Watch for changes to the showGrid prop
+ */
+watch(
+  () => props.showGrid,
+  (newValue) => {
+    if (newValue !== undefined) {
+      showGrid.value = newValue;
+    }
+  },
+  { immediate: true }
+);
 
-function selectElement(element: DocumentElement) {
+/**
+ * Watch for changes to the selected element to update its position
+ */
+watch(
+  () => selectedElement.value,
+  () => {
+    // Use nextTick to ensure the DOM has updated
+    nextTick(() => {
+      calculateSelectedElementPosition();
+    });
+  }
+);
+
+// 7. Methods
+/**
+ * Handle element selection
+ * @param element The element to select
+ */
+function selectElement(element: DocumentElement): void {
   selectedElement.value = element;
-  console.log("Element selected:", element.id, element.type);
 
   // Calculate the element position for the toolbar
   calculateSelectedElementPosition();
@@ -291,8 +272,10 @@ function selectElement(element: DocumentElement) {
   emit("element-selected", element);
 }
 
-// Calculate the position of the selected element for the toolbar
-function calculateSelectedElementPosition() {
+/**
+ * Calculate the position of the selected element for the toolbar
+ */
+function calculateSelectedElementPosition(): void {
   if (!selectedElement.value || !pageContent.value) return;
 
   // Find the element in the DOM
@@ -346,153 +329,88 @@ function calculateSelectedElementPosition() {
   }
 }
 
-// Get the index of an element in the sortedElements array
+/**
+ * Get the index of an element in the sortedElements array
+ * @param element The element to find
+ * @returns The index of the element
+ */
 function getElementIndex(element: DocumentElement): number {
   if (!element || !sortedElements.value) return 0;
 
   return sortedElements.value.findIndex((el) => el.id === element.id);
 }
 
-function updateElement(element: DocumentElement) {
+/**
+ * Update an element
+ * @param element The updated element
+ */
+function updateElement(element: DocumentElement): void {
   emit("element-updated", element);
 }
 
-// Layer control functions
-function moveElementUp(element: DocumentElement) {
+/**
+ * Move an element up one layer
+ * @param element The element to move
+ */
+function moveElementUp(element: DocumentElement): void {
   emit("move-element-up", element);
 }
 
-function moveElementDown(element: DocumentElement) {
+/**
+ * Move an element down one layer
+ * @param element The element to move
+ */
+function moveElementDown(element: DocumentElement): void {
   emit("move-element-down", element);
 }
 
-function moveElementToTop(element: DocumentElement) {
+/**
+ * Move an element to the top of all layers
+ * @param element The element to move
+ */
+function moveElementToTop(element: DocumentElement): void {
   emit("move-element-to-top", element);
 }
 
-function moveElementToBottom(element: DocumentElement) {
+/**
+ * Move an element to the bottom of all layers
+ * @param element The element to move
+ */
+function moveElementToBottom(element: DocumentElement): void {
   emit("move-element-to-bottom", element);
 }
 
-// Grid functions are removed
-
-// Function to snap position to grid (commented out as currently unused)
-// function snapToGrid(position: { x: number; y: number }) {
-//   return {
-//     x: Math.round(position.x / gridSize.value) * gridSize.value,
-//     y: Math.round(position.y / gridSize.value) * gridSize.value,
-//   };
-// }
-
-// Text selection is now handled by the global selection manager
-
-// Expose methods to parent components
-defineExpose({
-  // No special methods needed anymore
-});
-
-// Function to handle window resize
-const handleResize = () => {
+// 8. Lifecycle Hooks
+/**
+ * Handle window resize
+ */
+const handleResize = (): void => {
   if (selectedElement.value) {
     calculateSelectedElementPosition();
   }
 };
 
-// Add window resize listener to recalculate element position
+/**
+ * Add window resize listener to recalculate element position
+ */
 onMounted(() => {
   window.addEventListener("resize", handleResize);
 });
 
-// Clean up event listeners
+/**
+ * Clean up event listeners
+ */
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
 });
 
-// Global error handler for async components
+/**
+ * Global error handler for async components
+ */
 onErrorCaptured((error, instance, info) => {
   console.error("Component error:", error, instance, info);
   return false; // prevent error from propagating
 });
 </script>
 
-<style scoped lang="scss">
-.document-page-container {
-  position: relative;
-  margin: 16px auto;
-}
 
-.document-page {
-  background-color: var(--background);
-  box-shadow: var(--shadow-md);
-  transition: transform 0.2s ease;
-  position: relative;
-
-  &.active {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-  }
-}
-
-.page-content {
-  position: relative;
-  height: 100%; /* Use fixed height instead of min-height */
-  //padding: 24px;
-  background-color: white;
-  box-sizing: border-box;
-  overflow: hidden; /* Hide content that goes outside the document boundaries */
-}
-
-.elements-container {
-  position: relative;
-  height: 100%; /* Use fixed height instead of min-height */
-  width: 100%;
-  overflow: hidden; /* Hide content that goes outside the document boundaries */
-}
-
-.element-wrapper {
-  position: relative;
-
-  // We no longer force z-index on hover to maintain proper layer ordering
-  // Layer controls will be visible due to their own z-index
-}
-
-.empty-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 400px;
-  color: var(--text-secondary);
-  border: 2px dashed var(--border);
-  border-radius: 8px;
-
-  p {
-    font-size: 16px;
-    text-align: center;
-    max-width: 300px;
-  }
-}
-
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100px;
-  color: var(--text-secondary);
-}
-
-.error-loading {
-  padding: 8px;
-  color: var(--error);
-  background-color: var(--error-bg);
-  border-radius: 4px;
-  margin: 8px 0;
-}
-
-.drawing-rectangle {
-  position: absolute;
-  border: 2px dashed var(--primary, #0c84fe);
-  background-color: rgba(12, 132, 254, 0.1);
-  pointer-events: none;
-  z-index: 9999;
-}
-</style>

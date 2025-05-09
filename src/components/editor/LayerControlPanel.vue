@@ -3,10 +3,10 @@
     <div class="panel-header">
       <h3>Layers</h3>
     </div>
-    
+
     <div class="layer-list">
-      <div 
-        v-for="element in sortedElements" 
+      <div
+        v-for="element in sortedElements"
         :key="element.id"
         class="layer-item"
         :class="{ 'selected': selectedElement?.id === element.id }"
@@ -42,162 +42,97 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { DocumentElement } from '../../types/document'
+// 1. Imports
+import { computed } from 'vue';
+import type { DocumentElement } from '../../types/document';
+import { getElementIcon, getElementName } from '../../utils/elementUtils';
 
+// Import styles
+import '../../assets/styles/components/layerControlPanel.scss';
+
+// 2. Props and Emits
+/**
+ * Component props
+ */
 const props = defineProps<{
-  elements: DocumentElement[]
-  selectedElement: DocumentElement | null
-}>()
+  /** All elements in the current section */
+  elements: DocumentElement[];
+  /** The currently selected element */
+  selectedElement: DocumentElement | null;
+}>();
 
+/**
+ * Component events
+ */
 const emit = defineEmits<{
-  (e: 'element-selected', element: DocumentElement): void
-  (e: 'update-element', element: DocumentElement): void
-  (e: 'move-up', element: DocumentElement): void
-  (e: 'move-down', element: DocumentElement): void
-  (e: 'move-to-top', element: DocumentElement): void
-  (e: 'move-to-bottom', element: DocumentElement): void
-}>()
+  /** Emitted when an element is selected in the layer panel */
+  (e: 'element-selected', element: DocumentElement): void;
+  /** Emitted when an element is updated */
+  (e: 'update-element', element: DocumentElement): void;
+  /** Move the element up one layer */
+  (e: 'move-up', element: DocumentElement): void;
+  /** Move the element down one layer */
+  (e: 'move-down', element: DocumentElement): void;
+  /** Move the element to the top of all layers */
+  (e: 'move-to-top', element: DocumentElement): void;
+  /** Move the element to the bottom of all layers */
+  (e: 'move-to-bottom', element: DocumentElement): void;
+}>();
 
-// Sort elements by zIndex in reverse order (highest zIndex first)
+// 3. Computed Properties
+/**
+ * Sort elements by zIndex in reverse order (highest zIndex first)
+ * This makes the layer panel show elements in the same visual order as they appear
+ * in the document (top elements first)
+ */
 const sortedElements = computed(() => {
   return [...props.elements].sort((a, b) => {
-    const zIndexA = a.zIndex ?? 0
-    const zIndexB = b.zIndex ?? 0
-    return zIndexB - zIndexA // Reverse order for the layer panel
-  })
-})
+    const zIndexA = a.zIndex ?? 0;
+    const zIndexB = b.zIndex ?? 0;
+    return zIndexB - zIndexA; // Reverse order for the layer panel
+  });
+});
 
-function getElementIcon(type: string): string {
-  switch (type) {
-    case 'text': return 'mdi-format-text'
-    case 'image': return 'mdi-image'
-    case 'shape': return 'mdi-shape'
-    case 'table': return 'mdi-table'
-    case 'signature': return 'mdi-draw'
-    case 'form': return 'mdi-form-select'
-    case 'grid': return 'mdi-grid'
-    default: return 'mdi-shape-outline'
-  }
+// 4. Methods
+/**
+ * Handle element selection in the layer panel
+ * @param element The element to select
+ */
+function selectElement(element: DocumentElement): void {
+  emit('element-selected', element);
 }
 
-function getElementName(element: DocumentElement): string {
-  // Create a user-friendly name based on element type and content
-  const prefix = element.type.charAt(0).toUpperCase() + element.type.slice(1)
-  
-  switch (element.type) {
-    case 'text':
-      // For text elements, use the first few words
-      const text = typeof element.content === 'string' 
-        ? element.content.replace(/<[^>]*>/g, '') // Remove HTML tags
-        : ''
-      const shortText = text.length > 15 ? text.substring(0, 15) + '...' : text
-      return `${prefix}: ${shortText || 'Empty'}`
-    
-    case 'shape':
-      // For shapes, include the shape type
-      return `${prefix}: ${element.content || 'Rectangle'}`
-    
-    case 'image':
-      return `${prefix}`
-    
-    case 'table':
-      return `${prefix}: ${element.content?.headers?.length || 0} columns`
-    
-    default:
-      return `${prefix} ${element.id.split('-')[1] || ''}`
-  }
+/**
+ * Move the element up one layer
+ * @param element The element to move
+ */
+function moveUp(element: DocumentElement): void {
+  emit('move-up', element);
 }
 
-function selectElement(element: DocumentElement) {
-  emit('element-selected', element)
+/**
+ * Move the element down one layer
+ * @param element The element to move
+ */
+function moveDown(element: DocumentElement): void {
+  emit('move-down', element);
 }
 
-function moveUp(element: DocumentElement) {
-  emit('move-up', element)
+/**
+ * Move the element to the top of all layers
+ * @param element The element to move
+ */
+function moveToTop(element: DocumentElement): void {
+  emit('move-to-top', element);
 }
 
-function moveDown(element: DocumentElement) {
-  emit('move-down', element)
-}
-
-function moveToTop(element: DocumentElement) {
-  emit('move-to-top', element)
-}
-
-function moveToBottom(element: DocumentElement) {
-  emit('move-to-bottom', element)
+/**
+ * Move the element to the bottom of all layers
+ * @param element The element to move
+ */
+function moveToBottom(element: DocumentElement): void {
+  emit('move-to-bottom', element);
 }
 </script>
 
-<style scoped lang="scss">
-.layer-control-panel {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--surface);
-  border-left: 1px solid var(--border);
-}
 
-.panel-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  
-  h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 500;
-  }
-}
-
-.layer-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.layer-item {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  border-radius: 4px;
-  margin-bottom: 4px;
-  cursor: pointer;
-  
-  &:hover {
-    background-color: var(--hover);
-  }
-  
-  &.selected {
-    background-color: var(--selected);
-  }
-}
-
-.layer-icon {
-  margin-right: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.layer-name {
-  flex: 1;
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.layer-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0.5;
-  
-  .layer-item:hover & {
-    opacity: 1;
-  }
-}
-</style>

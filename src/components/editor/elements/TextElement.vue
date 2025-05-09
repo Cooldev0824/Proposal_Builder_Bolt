@@ -72,10 +72,7 @@ let startY = 0;
 let startLeft = 0;
 let startTop = 0;
 
-// Resize functionality
-let isResizing = false;
-let startWidth = 0;
-let startHeight = 0;
+// Resize functionality is now handled by the ResizeHandles component
 
 const elementStyle = computed(() => {
   return {
@@ -190,7 +187,7 @@ watch(
 // No longer needed - using direct text selection utility instead
 
 // Save the current cursor position
-function saveCursorPosition() {
+function saveCursorPosition(): boolean {
   const selection = window.getSelection();
   if (!selection || !selection.rangeCount || !contentElement.value)
     return false;
@@ -207,37 +204,6 @@ function saveCursorPosition() {
   };
 
   return true;
-}
-
-// Restore the cursor position
-function restoreCursorPosition() {
-  if (!cursorPosition.node || !contentElement.value) return false;
-
-  // Make sure the content element is still in the document
-  if (!document.body.contains(contentElement.value)) return false;
-
-  // Make sure the node is still in the document
-  if (!contentElement.value.contains(cursorPosition.node)) return false;
-
-  try {
-    // Focus the element first
-    contentElement.value.focus();
-
-    const selection = window.getSelection();
-    if (!selection) return false;
-
-    const range = document.createRange();
-    range.setStart(cursorPosition.node, cursorPosition.offset);
-    range.setEnd(cursorPosition.node, cursorPosition.offset);
-
-    selection.removeAllRanges();
-    selection.addRange(range);
-
-    return true;
-  } catch (error) {
-    // Error restoring cursor position
-    return false;
-  }
 }
 
 // Find a text node at the specified path
@@ -267,21 +233,21 @@ function getNodePath(node: Node): number[] | null {
   let currentNode: Node | null = node;
 
   while (currentNode && currentNode !== contentElement.value) {
-    const parent = currentNode.parentNode;
-    if (!parent) return null;
+    const parentNode: ParentNode | null = currentNode.parentNode;
+    if (!parentNode) return null;
 
-    const index = Array.from(parent.childNodes).indexOf(currentNode);
+    const index = Array.from(parentNode.childNodes).indexOf(currentNode as ChildNode);
     if (index === -1) return null;
 
     path.unshift(index);
-    currentNode = parent;
+    currentNode = parentNode;
   }
 
   return path;
 }
 
 // Handle text changes
-function handleTextChange(event: Event) {
+function handleTextChange(_event: Event): void {
   if (!contentElement.value || isUpdating) return;
 
   // Get the current selection
@@ -296,9 +262,8 @@ function handleTextChange(event: Event) {
   // Save the path to the node for more reliable restoration
   const nodePath = getNodePath(container);
 
-  // Save text before and after cursor for text-based restoration
+  // Save text before cursor for text-based restoration
   let textBeforeCursor = "";
-  let textAfterCursor = "";
 
   try {
     // Create a range from the start of the content to the cursor
@@ -306,15 +271,6 @@ function handleTextChange(event: Event) {
     beforeRange.setStart(contentElement.value, 0);
     beforeRange.setEnd(range.endContainer, range.endOffset);
     textBeforeCursor = beforeRange.toString();
-
-    // Create a range from the cursor to the end of the content
-    const afterRange = document.createRange();
-    afterRange.setStart(range.endContainer, range.endOffset);
-    afterRange.setEnd(
-      contentElement.value,
-      contentElement.value.childNodes.length
-    );
-    textAfterCursor = afterRange.toString();
   } catch (error) {
     // Error getting text around cursor
   }
@@ -388,14 +344,14 @@ function handleTextChange(event: Event) {
         // If node path fails, try text-based approach
         else if (textBeforeCursor) {
           // Get all text nodes
-          const textNodes = [];
+          const textNodes: Node[] = [];
           const walker = document.createTreeWalker(
             contentElement.value,
             NodeFilter.SHOW_TEXT,
             null
           );
 
-          let node;
+          let node: Node | null;
           while ((node = walker.nextNode())) {
             textNodes.push(node);
           }
@@ -403,7 +359,15 @@ function handleTextChange(event: Event) {
           if (textNodes.length > 0) {
             // Combine all text content
             let fullText = "";
-            const nodePositions = [];
+
+            // Define the node position interface
+            interface NodePosition {
+              node: Node;
+              startPos: number;
+              endPos: number;
+            }
+
+            const nodePositions: NodePosition[] = [];
 
             textNodes.forEach((node) => {
               const startPos = fullText.length;
@@ -421,7 +385,7 @@ function handleTextChange(event: Event) {
             const cursorPos = textBeforeCursor.length;
 
             // Find which node contains the cursor position
-            let targetNode = null;
+            let targetNode: Node | null = null;
             let targetOffset = 0;
 
             for (const pos of nodePositions) {
@@ -453,14 +417,16 @@ function handleTextChange(event: Event) {
 }
 
 // Handle key down events
-function handleKeyDown(event: KeyboardEvent) {
+function handleKeyDown(event: KeyboardEvent): void {
   // Handle keyboard shortcuts
   if ((event.ctrlKey || event.metaKey) && isEditing.value) {
+    // Get the current selection
+    const selection = window.getSelection();
+
     switch (event.key.toLowerCase()) {
       case "b": // Bold
         event.preventDefault();
         // Apply bold to selected text if there's a selection
-        const selection = window.getSelection();
         if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
           applyStyleToSelectedText("bold", true);
         } else {
@@ -556,10 +522,6 @@ function handleKeyDown(event: KeyboardEvent) {
     // Get the current range
     const range = selection.getRangeAt(0);
 
-    // Save the current cursor position information
-    const cursorContainer = range.endContainer;
-    const cursorOffset = range.endOffset;
-
     // Create a <br> element
     const br = document.createElement("br");
 
@@ -630,9 +592,6 @@ function handleKeyDown(event: KeyboardEvent) {
         isUpdating = false;
       }
     }, 10);
-
-    // Prevent default behavior
-    return false;
   }
 }
 
@@ -719,7 +678,7 @@ function handleMouseDown() {
 function applyStyleToSelectedText(
   styleProperty: string,
   value: string | boolean
-) {
+): boolean {
   // Applying style to selected text
 
   if (!contentElement.value) {
@@ -751,7 +710,7 @@ function applyStyleToSelectedText(
 
   // Apply the style to the selected text
   let command = "";
-  let value2 = value;
+  let value2: string | boolean = value;
 
   switch (styleProperty) {
     case "bold":
@@ -890,7 +849,7 @@ function applyStyleToSelectedText(
     case "justifyRight":
     case "justifyFull":
       command = styleProperty;
-      value2 = null;
+      value2 = ""; // Use empty string instead of null
       break;
     default:
       // Using custom span for style
@@ -923,16 +882,22 @@ function applyStyleToSelectedText(
 
   // For supported commands, use execCommand
   if (command) {
-    document.execCommand(command, false, value2 as string | null);
+    // Using try-catch to handle deprecated execCommand
+    try {
+      document.execCommand(command, false, value2 as string);
 
-    // Update the element content
-    const updatedElement = {
-      ...props.element,
-      content: contentElement.value.innerHTML,
-    };
+      // Update the element content
+      const updatedElement = {
+        ...props.element,
+        content: contentElement.value.innerHTML,
+      };
 
-    emit("update:element", updatedElement);
-    return true;
+      emit("update:element", updatedElement);
+      return true;
+    } catch (error) {
+      console.warn("execCommand is deprecated, consider using a modern alternative");
+      return false;
+    }
   }
 
   return false;
@@ -996,50 +961,7 @@ function handleResize(newSize: Size, newPosition: Position) {
   emit("update:element", updatedElement);
 }
 
-function startResize(event: MouseEvent) {
-  isResizing = true;
-  startX = event.clientX;
-  startY = event.clientY;
-  startWidth = props.element.size.width;
-  startHeight = props.element.size.height;
-
-  document.addEventListener("mousemove", onResize);
-  document.addEventListener("mouseup", stopResize);
-}
-
-function onResize(event: MouseEvent) {
-  if (!isResizing) return;
-
-  const deltaX = event.clientX - startX;
-  const deltaY = event.clientY - startY;
-
-  // Calculate new size
-  let newWidth = Math.max(100, startWidth + deltaX);
-  let newHeight = Math.max(50, startHeight + deltaY);
-
-  // Snap to grid (10px grid)
-  const gridSize = 10;
-  newWidth = Math.round(newWidth / gridSize) * gridSize;
-  newHeight = Math.round(newHeight / gridSize) * gridSize;
-
-  const newSize = {
-    width: newWidth,
-    height: newHeight,
-  };
-
-  const updatedElement = {
-    ...props.element,
-    size: newSize,
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function stopResize() {
-  isResizing = false;
-  document.removeEventListener("mousemove", onResize);
-  document.removeEventListener("mouseup", stopResize);
-}
+// Resize is now handled by the ResizeHandles component
 
 // Set up mutation observer to track DOM changes
 function setupMutationObserver() {
@@ -1109,9 +1031,10 @@ onMounted(() => {
     setupMutationObserver();
 
     // Add a click handler to ensure focus works correctly
-    contentElement.value.addEventListener("click", (e) => {
-      if (e.target === contentElement.value) {
-        contentElement.value.focus();
+    const element = contentElement.value;
+    element.addEventListener("click", (e) => {
+      if (e.target === element && element) {
+        element.focus();
       }
     });
 

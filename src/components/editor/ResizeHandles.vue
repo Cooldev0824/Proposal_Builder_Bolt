@@ -1,46 +1,49 @@
 <template>
   <div class="resize-handles">
     <!-- Corner handles -->
-    <div 
-      class="resize-handle corner top-left" 
+    <div
+      class="resize-handle corner top-left"
       @mousedown.stop="startResize('top-left', $event)"
     ></div>
-    <div 
-      class="resize-handle corner top-right" 
+    <div
+      class="resize-handle corner top-right"
       @mousedown.stop="startResize('top-right', $event)"
     ></div>
-    <div 
-      class="resize-handle corner bottom-left" 
+    <div
+      class="resize-handle corner bottom-left"
       @mousedown.stop="startResize('bottom-left', $event)"
     ></div>
-    <div 
-      class="resize-handle corner bottom-right" 
+    <div
+      class="resize-handle corner bottom-right"
       @mousedown.stop="startResize('bottom-right', $event)"
     ></div>
-    
+
     <!-- Edge handles -->
-    <div 
-      class="resize-handle edge top" 
+    <div
+      class="resize-handle edge top"
       @mousedown.stop="startResize('top', $event)"
     ></div>
-    <div 
-      class="resize-handle edge right" 
+    <div
+      class="resize-handle edge right"
       @mousedown.stop="startResize('right', $event)"
     ></div>
-    <div 
-      class="resize-handle edge bottom" 
+    <div
+      class="resize-handle edge bottom"
       @mousedown.stop="startResize('bottom', $event)"
     ></div>
-    <div 
-      class="resize-handle edge left" 
+    <div
+      class="resize-handle edge left"
       @mousedown.stop="startResize('left', $event)"
     ></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+
 import { Size, Position } from '../../types/document';
+
+// Import styles
+import '../../assets/styles/components/elements.scss';
 
 type ResizeDirection = 'top-left' | 'top' | 'top-right' | 'right' | 'bottom-right' | 'bottom' | 'bottom-left' | 'left';
 
@@ -91,7 +94,7 @@ function onResize(event: MouseEvent) {
 
   const deltaX = event.clientX - startX;
   const deltaY = event.clientY - startY;
-  
+
   let newWidth = startWidth;
   let newHeight = startHeight;
   let newLeft = startLeft;
@@ -138,7 +141,7 @@ function onResize(event: MouseEvent) {
   // Apply aspect ratio constraint if needed
   if (props.aspectRatio) {
     const ratio = props.aspectRatio;
-    
+
     // Determine which dimension to adjust based on resize direction
     if (['left', 'right'].includes(resizeDirection)) {
       // Adjusting width, calculate height based on aspect ratio
@@ -150,13 +153,13 @@ function onResize(event: MouseEvent) {
       // Corner resize - use the larger dimension change to determine constraint
       const widthChange = Math.abs(newWidth - startWidth);
       const heightChange = Math.abs(newHeight - startHeight);
-      
+
       if (widthChange >= heightChange) {
         newHeight = newWidth / ratio;
       } else {
         newWidth = newHeight * ratio;
       }
-      
+
       // Adjust position for top and left edges
       if (['top-left', 'top-right'].includes(resizeDirection)) {
         newTop = startTop + startHeight - newHeight;
@@ -185,88 +188,4 @@ function stopResize() {
 }
 </script>
 
-<style scoped lang="scss">
-.resize-handles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
 
-.resize-handle {
-  position: absolute;
-  background-color: var(--primary, #0c84fe);
-  pointer-events: auto;
-  z-index: 10;
-  
-  &.corner {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    
-    &.top-left {
-      top: -4px;
-      left: -4px;
-      cursor: nwse-resize;
-    }
-    
-    &.top-right {
-      top: -4px;
-      right: -4px;
-      cursor: nesw-resize;
-    }
-    
-    &.bottom-left {
-      bottom: -4px;
-      left: -4px;
-      cursor: nesw-resize;
-    }
-    
-    &.bottom-right {
-      bottom: -4px;
-      right: -4px;
-      cursor: nwse-resize;
-    }
-  }
-  
-  &.edge {
-    &.top {
-      top: -4px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 20px;
-      height: 8px;
-      cursor: ns-resize;
-    }
-    
-    &.right {
-      right: -4px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 8px;
-      height: 20px;
-      cursor: ew-resize;
-    }
-    
-    &.bottom {
-      bottom: -4px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 20px;
-      height: 8px;
-      cursor: ns-resize;
-    }
-    
-    &.left {
-      left: -4px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 8px;
-      height: 20px;
-      cursor: ew-resize;
-    }
-  }
-}
-</style>

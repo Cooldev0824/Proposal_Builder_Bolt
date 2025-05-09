@@ -220,17 +220,17 @@
     <div
       v-if="isSelected"
       class="resize-handle bottom-right"
-      @mousedown.stop="startResize('both')"
+      @mousedown.stop="(e: MouseEvent) => startResize('both', e)"
     ></div>
     <div
       v-if="isSelected"
       class="resize-handle bottom"
-      @mousedown.stop="startResize('height')"
+      @mousedown.stop="(e: MouseEvent) => startResize('height', e)"
     ></div>
     <div
       v-if="isSelected"
       class="resize-handle right"
-      @mousedown.stop="startResize('width')"
+      @mousedown.stop="(e: MouseEvent) => startResize('width', e)"
     ></div>
 
     <!-- Column resize handles (visible when editing is active) -->
@@ -240,7 +240,7 @@
         :key="index"
         class="column-resize-handle"
         :style="{ left: getColumnPosition(index) + 'px' }"
-        @mousedown.stop="startColumnResize(index)"
+        @mousedown.stop="(e: MouseEvent) => startColumnResize(index, e)"
       ></div>
     </div>
 
@@ -251,7 +251,7 @@
         :key="index"
         class="row-resize-handle"
         :style="{ top: getRowPosition(index) + 'px' }"
-        @mousedown.stop="startRowResize(index)"
+        @mousedown.stop="(e: MouseEvent) => startRowResize(index, e)"
       ></div>
     </div>
 
@@ -310,6 +310,10 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { DocumentElement } from "../../../types/document";
+import type { CSSProperties } from "vue";
+
+// Import styles
+import '../../../assets/styles/components/tableElement.scss';
 
 interface CellFormatting {
   bold?: boolean;
@@ -395,21 +399,21 @@ const activeCellFormatting = ref<CellFormatting>({
 });
 
 // Computed properties
-const elementStyle = computed(() => {
+const elementStyle = computed<CSSProperties>(() => {
   return {
     left: `${props.element.position.x}px`,
     top: `${props.element.position.y}px`,
     width: `${props.element.size.width}px`,
     minHeight: `${props.element.size.height}px`,
     zIndex: props.element.zIndex ?? 0,
-    position: "absolute",
+    position: "absolute" as const,
   };
 });
 
-const tableStyle = computed(() => {
+const tableStyle = computed<CSSProperties>(() => {
   const style = props.element.style || {};
   return {
-    borderCollapse: "collapse",
+    borderCollapse: "collapse" as const,
     width: "100%",
     borderColor: style.borderColor || "#E2E8F0",
     borderStyle: style.borderStyle || "solid",
@@ -450,7 +454,7 @@ const canSplitCell = computed(() => {
 });
 
 // Get header style for a specific header
-function getHeaderStyle(index: number) {
+function getHeaderStyle(index: number): CSSProperties {
   const style = props.element.style || {};
   const headerFormatting = tableData.value.headerFormatting?.[index] || {};
 
@@ -465,7 +469,7 @@ function getHeaderStyle(index: number) {
     borderColor: style.borderColor || "#E2E8F0",
     borderStyle: style.borderStyle || "solid",
     borderWidth: `${style.borderWidth || 1}px`,
-    position: "relative",
+    position: "relative" as const,
     width: tableData.value.columnWidths?.[index]
       ? `${tableData.value.columnWidths[index]}px`
       : "auto",
@@ -473,14 +477,14 @@ function getHeaderStyle(index: number) {
 }
 
 // Get cell style for a specific cell
-function getCellStyle(rowIndex: number, cellIndex: number) {
+function getCellStyle(rowIndex: number, cellIndex: number): CSSProperties {
   const style = props.element.style || {};
   const cellFormatting =
     tableData.value.cellFormatting?.[rowIndex]?.[cellIndex] || {};
   const cellKey = `${rowIndex}-${cellIndex}`;
   const mergedCell = tableData.value.mergedCells?.[cellKey];
 
-  return {
+  const cellStyle: CSSProperties = {
     backgroundColor:
       cellFormatting.backgroundColor || style.cellBackgroundColor || "#FFFFFF",
     color: cellFormatting.color || style.cellTextColor || "#000000",
@@ -492,15 +496,24 @@ function getCellStyle(rowIndex: number, cellIndex: number) {
     borderColor: style.borderColor || "#E2E8F0",
     borderStyle: style.borderStyle || "solid",
     borderWidth: `${style.borderWidth || 1}px`,
-    position: "relative",
+    position: "relative" as const,
     height: tableData.value.rowHeights?.[rowIndex]
       ? `${tableData.value.rowHeights[rowIndex]}px`
       : "auto",
-    ...(mergedCell && {
-      rowSpan: mergedCell.rowspan,
-      colSpan: mergedCell.colspan,
-    }),
   };
+
+  // Add rowspan and colspan if this is a merged cell
+  // Note: We're using any here because rowSpan and colSpan are HTML attributes, not CSS properties
+  if (mergedCell) {
+    if (mergedCell.rowspan > 1) {
+      (cellStyle as any).rowSpan = mergedCell.rowspan;
+    }
+    if (mergedCell.colspan > 1) {
+      (cellStyle as any).colSpan = mergedCell.colspan;
+    }
+  }
+
+  return cellStyle;
 }
 
 // Get header formatting for a specific header
@@ -925,7 +938,7 @@ function updateCellContent() {
   } else {
     updatedElement.content = {
       ...updatedElement.content,
-      rows: updatedElement.content.rows.map((row) => [...row]),
+      rows: updatedElement.content.rows.map((row: any[]) => [...row]),
     };
     updatedElement.content.rows[rowIndex][cellIndex] = content;
   }
@@ -1253,14 +1266,14 @@ function addColumnLeft() {
   updatedElement.content = {
     ...updatedElement.content,
     headers: [...updatedElement.content.headers],
-    rows: updatedElement.content.rows.map((row) => [...row]),
+    rows: updatedElement.content.rows.map((row: any[]) => [...row]),
   };
 
   // Insert new header
   updatedElement.content.headers.splice(columnIndex, 0, "New Column");
 
   // Insert empty cell in each row
-  updatedElement.content.rows.forEach((row) => {
+  updatedElement.content.rows.forEach((row: any[]) => {
     row.splice(columnIndex, 0, "");
   });
 
@@ -1280,14 +1293,14 @@ function addColumnRight() {
   updatedElement.content = {
     ...updatedElement.content,
     headers: [...updatedElement.content.headers],
-    rows: updatedElement.content.rows.map((row) => [...row]),
+    rows: updatedElement.content.rows.map((row: any[]) => [...row]),
   };
 
   // Insert new header
   updatedElement.content.headers.splice(columnIndex + 1, 0, "New Column");
 
   // Insert empty cell in each row
-  updatedElement.content.rows.forEach((row) => {
+  updatedElement.content.rows.forEach((row: any[]) => {
     row.splice(columnIndex + 1, 0, "");
   });
 
@@ -1307,14 +1320,14 @@ function deleteColumn() {
   updatedElement.content = {
     ...updatedElement.content,
     headers: [...updatedElement.content.headers],
-    rows: updatedElement.content.rows.map((row) => [...row]),
+    rows: updatedElement.content.rows.map((row: any[]) => [...row]),
   };
 
   // Remove header
   updatedElement.content.headers.splice(columnIndex, 1);
 
   // Remove cell from each row
-  updatedElement.content.rows.forEach((row) => {
+  updatedElement.content.rows.forEach((row: any[]) => {
     row.splice(columnIndex, 1);
   });
 
@@ -1405,202 +1418,4 @@ function handleDocumentClick() {
 }
 </script>
 
-<style scoped lang="scss">
-.element {
-  position: absolute;
-  cursor: move;
 
-  &.selected {
-    outline: 2px solid var(--primary);
-  }
-
-  &.editing-active {
-    cursor: default;
-  }
-}
-
-.table-element {
-  overflow: visible;
-  background-color: white;
-}
-
-.table-container {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-}
-
-.editor-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th,
-  td {
-    position: relative;
-    transition: background-color 0.2s;
-
-    &.selected-cell {
-      background-color: rgba(var(--primary-rgb), 0.1) !important;
-    }
-
-    &.active-cell {
-      background-color: rgba(var(--primary-rgb), 0.2) !important;
-      box-shadow: inset 0 0 0 2px var(--primary);
-    }
-  }
-}
-
-.cell-content {
-  min-height: 1.5em;
-  width: 100%;
-}
-
-.cell-editor {
-  width: 100%;
-
-  .editable-content {
-    min-height: 1.5em;
-    outline: none;
-    width: 100%;
-    padding: 0;
-  }
-}
-
-// Resize handles
-.resize-handle {
-  position: absolute;
-  background-color: var(--primary);
-  z-index: 10;
-
-  &.bottom-right {
-    width: 10px;
-    height: 10px;
-    bottom: 0;
-    right: 0;
-    cursor: nwse-resize;
-  }
-
-  &.bottom {
-    height: 6px;
-    left: 10px;
-    right: 10px;
-    bottom: 0;
-    cursor: ns-resize;
-  }
-
-  &.right {
-    width: 6px;
-    top: 10px;
-    bottom: 10px;
-    right: 0;
-    cursor: ew-resize;
-  }
-}
-
-// Column and row resize handles
-.column-resize-handle {
-  position: absolute;
-  width: 5px;
-  top: 0;
-  bottom: 0;
-  background-color: transparent;
-  cursor: col-resize;
-  z-index: 5;
-
-  &:hover {
-    background-color: rgba(var(--primary-rgb), 0.3);
-  }
-
-  &:active {
-    background-color: var(--primary);
-  }
-}
-
-.row-resize-handle {
-  position: absolute;
-  height: 5px;
-  left: 0;
-  right: 0;
-  background-color: transparent;
-  cursor: row-resize;
-  z-index: 5;
-
-  &:hover {
-    background-color: rgba(var(--primary-rgb), 0.3);
-  }
-
-  &:active {
-    background-color: var(--primary);
-  }
-}
-
-// Toolbars
-.table-toolbar,
-.cell-editing-toolbar {
-  position: absolute;
-  top: -40px;
-  left: 0;
-  right: 0;
-  height: 40px;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-.toolbar-section {
-  margin-right: 16px;
-
-  &:last-child {
-    margin-right: 0;
-    margin-left: auto;
-  }
-}
-
-// Active button styling
-.v-btn.active {
-  background-color: rgba(var(--primary-rgb), 0.2);
-  color: var(--primary);
-}
-
-// Preview elements
-.border-preview,
-.header-preview,
-.cell-preview {
-  padding: 12px;
-  text-align: center;
-  border-radius: 4px;
-}
-
-.column-preview {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 200px;
-  margin: 0 auto;
-}
-
-.column-header,
-.column-cell {
-  padding: 10px;
-  text-align: center;
-}
-
-.row-preview {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  overflow-x: auto;
-}
-
-.row-cell {
-  padding: 10px;
-  text-align: center;
-  min-width: 100px;
-  flex: 1;
-}
-</style>

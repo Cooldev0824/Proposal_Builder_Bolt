@@ -32,6 +32,7 @@ export type DocumentElement = {
   size: Size;
   style?: any;
   zIndex?: number;
+  children?: DocumentElement[];
 };
 
 export interface TextElement extends DocumentElement {

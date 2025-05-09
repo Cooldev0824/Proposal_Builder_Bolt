@@ -13,6 +13,9 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 
+// Import styles
+import '../../assets/styles/components/ruler.scss';
+
 const props = defineProps<{
   visible: boolean
   zoom: number
@@ -34,21 +37,21 @@ function drawRuler(canvas: HTMLCanvasElement, length: number, isVertical: boolea
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = '#f5f5f5'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
-  
+
   ctx.beginPath()
   ctx.strokeStyle = '#999'
   ctx.lineWidth = 1
-  
+
   const scale = props.zoom
-  
+
   for (let i = 0; i < length; i += MINOR_TICK_INTERVAL) {
     const pos = i * scale
     const isMajor = i % MAJOR_TICK_INTERVAL === 0
-    
+
     if (isVertical) {
       ctx.moveTo(RULER_SIZE - (isMajor ? 10 : 5), pos)
       ctx.lineTo(RULER_SIZE, pos)
-      
+
       if (isMajor) {
         ctx.save()
         ctx.translate(10, pos + 4)
@@ -61,7 +64,7 @@ function drawRuler(canvas: HTMLCanvasElement, length: number, isVertical: boolea
     } else {
       ctx.moveTo(pos, RULER_SIZE - (isMajor ? 10 : 5))
       ctx.lineTo(pos, RULER_SIZE)
-      
+
       if (isMajor) {
         ctx.fillStyle = '#666'
         ctx.font = '10px Arial'
@@ -69,7 +72,7 @@ function drawRuler(canvas: HTMLCanvasElement, length: number, isVertical: boolea
       }
     }
   }
-  
+
   ctx.stroke()
 }
 
@@ -77,12 +80,12 @@ function updateRulers() {
   if (horizontalCanvas.value && verticalCanvas.value) {
     const parentWidth = horizontalRuler.value?.parentElement?.clientWidth || 1000
     const parentHeight = verticalRuler.value?.parentElement?.clientHeight || 1000
-    
+
     horizontalCanvas.value.width = parentWidth
     horizontalCanvas.value.height = RULER_SIZE
     verticalCanvas.value.width = RULER_SIZE
     verticalCanvas.value.height = parentHeight
-    
+
     drawRuler(horizontalCanvas.value, parentWidth, false)
     drawRuler(verticalCanvas.value, parentHeight, true)
   }
@@ -104,7 +107,7 @@ onMounted(() => {
   if (props.visible) {
     updateRulers()
   }
-  
+
   window.addEventListener('resize', updateRulers)
 })
 
@@ -113,44 +116,3 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
-.ruler-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-.ruler {
-  position: absolute;
-  background: #f5f5f5;
-  
-  &.horizontal {
-    top: 0;
-    left: 20px;
-    right: 0;
-    height: 20px;
-  }
-  
-  &.vertical {
-    top: 20px;
-    left: 0;
-    width: 20px;
-    bottom: 0;
-  }
-}
-
-.ruler-corner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 20px;
-  height: 20px;
-  background: #f5f5f5;
-  border-right: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-}
-</style>

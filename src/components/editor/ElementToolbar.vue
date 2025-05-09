@@ -83,30 +83,65 @@
 </template>
 
 <script setup lang="ts">
+// 1. Imports
 import { computed } from "vue";
 import type { DocumentElement } from "../../types/document";
+import type { CSSProperties } from "vue";
+import { getElementIcon, getElementName } from "../../utils/elementUtils";
 
+// Import styles
+import '../../assets/styles/components/elementToolbar.scss';
+
+// 2. Types
+/**
+ * Element position information for toolbar positioning
+ */
+interface ElementPosition {
+  top: number;
+  left: number;
+  width: number;
+}
+
+// 3. Props and Emits
 const props = defineProps<{
+  /** The currently selected element */
   element: DocumentElement;
+  /** All elements in the current section */
   elements: DocumentElement[];
+  /** The index of the element in the z-order stack */
   layerIndex: number;
+  /** The total number of elements/layers */
   totalLayers: number;
-  elementPosition?: { top: number; left: number; width: number };
+  /** Position information for the selected element */
+  elementPosition?: ElementPosition;
 }>();
 
 defineEmits<{
+  /** Move the element up one layer */
   (e: "move-up", element: DocumentElement): void;
+  /** Move the element down one layer */
   (e: "move-down", element: DocumentElement): void;
+  /** Move the element to the top of all layers */
   (e: "move-to-top", element: DocumentElement): void;
+  /** Move the element to the bottom of all layers */
   (e: "move-to-bottom", element: DocumentElement): void;
 }>();
 
-// Compute whether the element is at the top or bottom of the stack
-const isTopLayer = computed(() => props.layerIndex === props.totalLayers - 1);
-const isBottomLayer = computed(() => props.layerIndex === 0);
+// 4. Computed Properties
+/**
+ * Determines if the element is at the top of the layer stack
+ */
+const isTopLayer = computed((): boolean => props.layerIndex === props.totalLayers - 1);
 
-// Calculate toolbar position based on element position
-const toolbarStyle = computed(() => {
+/**
+ * Determines if the element is at the bottom of the layer stack
+ */
+const isBottomLayer = computed((): boolean => props.layerIndex === 0);
+
+/**
+ * Calculates the toolbar position based on the element position
+ */
+const toolbarStyle = computed((): CSSProperties => {
   if (!props.elementPosition) return {};
 
   // Calculate width with min/max constraints
@@ -128,186 +163,8 @@ const toolbarStyle = computed(() => {
   };
 });
 
-function getElementIcon(type: string): string {
-  switch (type) {
-    case "text":
-      return "mdi-format-text";
-    case "image":
-      return "mdi-image";
-    case "shape":
-      return "mdi-shape";
-    case "table":
-      return "mdi-table";
-    case "signature":
-      return "mdi-draw";
-    case "form":
-      return "mdi-form-select";
-    case "grid":
-      return "mdi-grid";
-    default:
-      return "mdi-shape-outline";
-  }
-}
-
-function getElementName(element: DocumentElement): string {
-  // Create a user-friendly name based on element type and content
-  const prefix = element.type.charAt(0).toUpperCase() + element.type.slice(1);
-
-  switch (element.type) {
-    case "text":
-      // For text elements, use the first few words
-      const text =
-        typeof element.content === "string"
-          ? element.content.replace(/<[^>]*>/g, "") // Remove HTML tags
-          : "";
-      const shortText = text.length > 15 ? text.substring(0, 15) + "..." : text;
-      return shortText || `${prefix}`;
-
-    case "shape":
-      // For shapes, include the shape type
-      return `${prefix}: ${element.content || "Rectangle"}`;
-
-    case "image":
-      return `${prefix}`;
-
-    default:
-      return `${prefix}`;
-  }
-}
+// 5. Methods
+// Element icon and name functions are now imported from elementUtils.ts
 </script>
 
-<style scoped lang="scss">
-.element-toolbar {
-  position: absolute;
-  background-color: rgba(255, 255, 255, 0.75); /* More transparent background */
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  z-index: 3000;
-  backdrop-filter: blur(
-    10px
-  ); /* Increased blur for better readability with transparency */
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-bottom: 3px solid rgba(var(--primary-rgb), 0.8); /* Semi-transparent border */
-  min-width: 250px;
-  margin-top: 10px;
 
-  &:hover {
-    background-color: rgba(
-      255,
-      255,
-      255,
-      0.85
-    ); /* Slightly less transparent on hover */
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
-  }
-}
-
-.toolbar-section {
-  display: flex;
-  align-items: center;
-}
-
-.element-info {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-}
-
-.element-type {
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-  color: var(--text-primary);
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.layer-number {
-  font-size: 12px;
-  color: var(--text-secondary);
-  background-color: rgba(0, 0, 0, 0.08);
-  padding: 2px 8px;
-  border-radius: 12px;
-  backdrop-filter: blur(4px);
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 24px;
-  background-color: rgba(0, 0, 0, 0.1);
-  margin: 0 12px;
-}
-
-.layer-controls {
-  display: flex;
-  gap: 4px;
-}
-
-.toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background-color: transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--primary);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-
-  &:hover {
-    background-color: rgba(var(--primary-rgb), 0.15);
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.1);
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
-
-  &.disabled {
-    color: var(--text-disabled);
-    cursor: not-allowed;
-
-    &:hover {
-      background-color: transparent;
-      transform: none;
-    }
-
-    &:active {
-      transform: none;
-    }
-  }
-}
-
-.toolbar-tooltip {
-  font-size: 12px;
-  padding: 4px 8px;
-  background-color: rgba(30, 30, 30, 0.85);
-  color: white;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(4px);
-}
-
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

@@ -231,7 +231,7 @@ export async function exportToPdf(
  * @returns Promise that resolves when the PDF has been generated and saved
  */
 async function exportSinglePage(
-  docData: Document,
+  _docData: Document,
   container: HTMLElement,
   pdf: jsPDF,
   options: PdfExportOptions
@@ -329,7 +329,7 @@ async function exportSinglePage(
  */
 function processPageForExport(
   pageElement: HTMLElement,
-  options: PdfExportOptions
+  _options: PdfExportOptions
 ): void {
   // Hide UI controls that shouldn't appear in the PDF
   const uiElements = pageElement.querySelectorAll(
@@ -384,4 +384,164 @@ function processPageForExport(
     svg.style.display = "block";
     svg.style.visibility = "visible";
   });
+}
+
+/**
+ * Export a document to PDF directly without requiring a DOM container
+ * This is useful for server-side or headless PDF generation
+ * @param docData The document data to export
+ * @param options PDF export options
+ * @returns Promise that resolves when the PDF has been generated and downloaded
+ */
+export async function directExportToPdf(
+  docData: Document,
+  options: PdfExportOptions = {}
+): Promise<void> {
+  // Merge default options with provided options
+  const mergedOptions = { ...defaultOptions, ...options };
+  mergedOptions.margins = { ...defaultOptions.margins, ...options.margins };
+
+  // Get paper size and orientation from document data
+  const paperSizeName = docData.paperSize || "A4";
+  const orientation = docData.orientation || "portrait";
+
+  // Get the paper size dimensions
+  let paperSize = getPaperSizeByName(paperSizeName);
+  if (orientation === "landscape") {
+    paperSize = getLandscapeSize(paperSize);
+  }
+
+  // Create PDF with the correct paper size and orientation
+  const pdfOrientation = orientation === "landscape" ? "l" : "p";
+  const pdf = new jsPDF({
+    orientation: pdfOrientation,
+    unit: "pt",
+    format: paperSizeName.toLowerCase(),
+    hotfixes: ["px_scaling"],
+  });
+
+  // Create a temporary container to render the document
+  const tempContainer = document.createElement("div");
+  tempContainer.style.position = "absolute";
+  tempContainer.style.left = "-9999px";
+  tempContainer.style.top = "-9999px";
+  tempContainer.style.width = `${paperSize.width}px`;
+  tempContainer.style.height = `${paperSize.height}px`;
+  tempContainer.style.backgroundColor = "white";
+  document.body.appendChild(tempContainer);
+
+  try {
+    // Create a document preview
+    for (let i = 0; i < docData.sections.length; i++) {
+      const section = docData.sections[i];
+
+      // Create a page container
+      const pageContainer = document.createElement("div");
+      pageContainer.className = "preview-page";
+      pageContainer.style.width = `${paperSize.width}px`;
+      pageContainer.style.height = `${paperSize.height}px`;
+      pageContainer.style.position = "relative";
+      pageContainer.style.backgroundColor = "white";
+      pageContainer.style.overflow = "hidden";
+
+      // Create elements container
+      const elementsContainer = document.createElement("div");
+      elementsContainer.className = "elements-container";
+      elementsContainer.style.position = "relative";
+      elementsContainer.style.width = "100%";
+      elementsContainer.style.height = "100%";
+      pageContainer.appendChild(elementsContainer);
+
+      // Render each element in the section
+      section.elements.forEach(element => {
+        const elementDiv = document.createElement("div");
+        elementDiv.style.position = "absolute";
+        elementDiv.style.left = `${element.position.x}px`;
+        elementDiv.style.top = `${element.position.y}px`;
+        elementDiv.style.width = `${element.size.width}px`;
+        elementDiv.style.height = `${element.size.height}px`;
+        elementDiv.style.zIndex = `${element.zIndex || 0}`;
+
+        // Add content based on element type
+        if (element.type === "text") {
+          elementDiv.innerHTML = element.content;
+          if (element.style) {
+            elementDiv.style.fontFamily = element.style.fontFamily || "Arial";
+            elementDiv.style.fontSize = `${element.style.fontSize || 16}px`;
+            elementDiv.style.fontWeight = element.style.fontWeight || "normal";
+            elementDiv.style.color = element.style.color || "#000000";
+            elementDiv.style.backgroundColor = element.style.backgroundColor || "transparent";
+          }
+        } else if (element.type === "image") {
+          const img = document.createElement("img");
+          img.src = element.content;
+          img.style.width = "100%";
+          img.style.height = "100%";
+          img.style.objectFit = "contain";
+          elementDiv.appendChild(img);
+        } else if (element.type === "shape") {
+          // Simple representation of shapes
+          elementDiv.style.backgroundColor = element.style?.fill || "#E2E8F0";
+          elementDiv.style.border = `${element.style?.strokeWidth || 1}px solid ${element.style?.stroke || "#CBD5E1"}`;
+          if (element.content === "circle") {
+            elementDiv.style.borderRadius = "50%";
+          }
+        }
+
+        elementsContainer.appendChild(elementDiv);
+      });
+
+      tempContainer.appendChild(pageContainer);
+
+      // Add a new page for each section after the first
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      // Render the page to canvas
+      const canvas = await html2canvas(pageContainer, {
+        scale: mergedOptions.quality || 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: mergedOptions.includeBackground ? "white" : null,
+        width: paperSize.width,
+        height: paperSize.height,
+      });
+
+      // Get the PDF dimensions
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // Calculate margins
+      const margins = mergedOptions.margins || {};
+      const marginTop = margins.top || 0;
+      const marginRight = margins.right || 0;
+      const marginBottom = margins.bottom || 0;
+      const marginLeft = margins.left || 0;
+
+      // Calculate available space after margins
+      const availableWidth = pdfWidth - marginLeft - marginRight;
+      const availableHeight = pdfHeight - marginTop - marginBottom;
+
+      // Add the image to the PDF
+      pdf.addImage(
+        canvas.toDataURL("image/png"),
+        "PNG",
+        marginLeft,
+        marginTop,
+        availableWidth,
+        availableHeight
+      );
+
+      // Remove the page container after processing
+      tempContainer.removeChild(pageContainer);
+    }
+
+    // Save the PDF
+    pdf.save(mergedOptions.filename || "document.pdf");
+  } finally {
+    // Clean up the temporary container
+    document.body.removeChild(tempContainer);
+  }
 }

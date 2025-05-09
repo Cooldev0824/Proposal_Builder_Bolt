@@ -184,7 +184,7 @@ import PropertiesPanel from "../components/editor/PropertiesPanel.vue";
 import LayerControlPanel from "../components/editor/LayerControlPanel.vue";
 import PreviewDialog from "../components/editor/PreviewDialog.vue";
 import DocumentSizeDialog from "../components/editor/DocumentSizeDialog.vue";
-import { directExportToPdf } from "../services/pdfExportService2";
+import { directExportToPdf } from "../services/pdfExportService";
 import { useDocumentStore } from "../stores/documentStore";
 import { useHistoryStore } from "../stores/historyStore";
 import { Section, DocumentElement, Document } from "../types/document";
