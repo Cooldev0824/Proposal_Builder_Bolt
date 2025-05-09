@@ -359,7 +359,7 @@ onErrorCaptured((error, instance, info) => {
 
 .element-wrapper {
   position: relative;
-  margin-top: 40px; /* Add space for the layer controls */
+  margin-top: 44px; /* Add space for the modernized layer controls */
 
   // We no longer force z-index on hover to maintain proper layer ordering
   // Layer controls will be visible due to their own z-index
