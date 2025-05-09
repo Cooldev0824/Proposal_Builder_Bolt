@@ -13,71 +13,74 @@
     <!-- Actual document page without padding for rulers -->
     <div class="document-page" :class="{ active: isActive }" :style="pageStyle">
       <div class="page-content" ref="pageContent">
+        <!-- Element toolbar positioned at the top of the page content -->
+        <ElementToolbar
+          v-if="selectedElement && selectedElementPosition"
+          :element="selectedElement"
+          :elements="section?.elements || []"
+          :layer-index="getElementIndex(selectedElement)"
+          :total-layers="sortedElements.length"
+          :element-position="selectedElementPosition"
+          @move-up="moveElementUp"
+          @move-down="moveElementDown"
+          @move-to-top="moveElementToTop"
+          @move-to-bottom="moveElementToBottom"
+        />
+
         <Suspense v-if="section?.elements && Array.isArray(section.elements)">
           <template #default>
             <div class="elements-container">
-            <div
-              v-for="(element, index) in sortedElements"
-              :key="element.id"
-              class="element-wrapper"
-              :style="{ zIndex: element.zIndex || 0 }"
-              @mouseenter="hoveredElement = element"
-              @mouseleave="hoveredElement = null"
-            >
-              <!-- Always show layer controls for selected elements -->
-              <ElementLayerControls
-                v-if="selectedElement?.id === element.id"
-                :element="element"
-                :elements="section.elements"
-                :layer-index="index"
-                :total-layers="sortedElements.length"
-                @move-up="moveElementUp"
-                @move-down="moveElementDown"
-                @move-to-top="moveElementToTop"
-                @move-to-bottom="moveElementToBottom"
-              />
-
-              <component
-                :is="getElementComponent(element.type)"
-                :element="element"
-                :isSelected="selectedElement?.id === element.id"
-                @click.stop="selectElement(element)"
-                @update:element="updateElement"
-                ref="elementRefs"
-              />
+              <div
+                v-for="(element, index) in sortedElements"
+                :key="element.id"
+                class="element-wrapper"
+                :style="{ zIndex: element.zIndex || 0 }"
+                @mouseenter="hoveredElement = element"
+                @mouseleave="hoveredElement = null"
+              >
+                <component
+                  :is="getElementComponent(element.type)"
+                  :element="element"
+                  :isSelected="selectedElement?.id === element.id"
+                  @click.stop="selectElement(element)"
+                  @update:element="updateElement"
+                  ref="elementRefs"
+                  :data-element-id="element.id"
+                  :class="`element-${element.id}`"
+                />
+              </div>
             </div>
-          </div>
-        </template>
-        <template #fallback>
-          <div class="loading">Loading elements...</div>
-        </template>
-      </Suspense>
+          </template>
+          <template #fallback>
+            <div class="loading">Loading elements...</div>
+          </template>
+        </Suspense>
 
-      <div
-        v-if="
-          !section ||
-          !section?.elements ||
-          !Array.isArray(section.elements) ||
-          !section.elements?.length
-        "
-        class="empty-page"
-      >
-        <p>This section is empty. Add elements from the toolbar above.</p>
+        <div
+          v-if="
+            !section ||
+            !section?.elements ||
+            !Array.isArray(section.elements) ||
+            !section.elements?.length
+          "
+          class="empty-page"
+        >
+          <p>This section is empty. Add elements from the toolbar above.</p>
+        </div>
+
+        <!-- Drawing rectangle for creating elements -->
+        <div
+          v-if="isDrawing"
+          class="drawing-rectangle"
+          :style="{
+            left: drawingRectStyle?.left,
+            top: drawingRectStyle?.top,
+            width: drawingRectStyle?.width,
+            height: drawingRectStyle?.height,
+          }"
+        ></div>
       </div>
-
-      <!-- Drawing rectangle for creating elements -->
-      <div
-        v-if="isDrawing"
-        class="drawing-rectangle"
-        :style="{
-          left: drawingRectStyle?.left,
-          top: drawingRectStyle?.top,
-          width: drawingRectStyle?.width,
-          height: drawingRectStyle?.height,
-        }"
-      ></div>
     </div>
-  </div>
   </div>
 </template>
 
@@ -88,9 +91,12 @@ import {
   defineAsyncComponent,
   onErrorCaptured,
   watch,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
 } from "vue";
 import { Section, DocumentElement } from "../../types/document";
-import ElementLayerControls from "./ElementLayerControls.vue";
+import ElementToolbar from "./ElementToolbar.vue";
 import GridOverlay from "./GridOverlay.vue";
 import { getPaperSizeByName, getLandscapeSize } from "../../utils/paperSizes";
 
@@ -186,6 +192,11 @@ const hoveredElement = ref<DocumentElement | null>(null);
 const elementRefs = ref<any[]>([]);
 const showGrid = ref(true); // Default to true, will be updated when props change
 const gridSize = ref(10); // Grid size in pixels (each small square is 10px)
+const selectedElementPosition = ref<{
+  top: number;
+  left: number;
+  width: number;
+} | null>(null);
 
 // Page dimensions based on paper size
 const pageWidth = computed(() => {
@@ -226,6 +237,17 @@ watch(
     }
   },
   { immediate: true }
+);
+
+// Watch for changes to the selected element to update its position
+watch(
+  () => selectedElement.value,
+  () => {
+    // Use nextTick to ensure the DOM has updated
+    nextTick(() => {
+      calculateSelectedElementPosition();
+    });
+  }
 );
 
 const pageStyle = computed(() => {
@@ -275,7 +297,73 @@ function getElementComponent(type: string) {
 function selectElement(element: DocumentElement) {
   selectedElement.value = element;
   console.log("Element selected:", element.id, element.type);
+
+  // Calculate the element position for the toolbar
+  calculateSelectedElementPosition();
+
   emit("element-selected", element);
+}
+
+// Calculate the position of the selected element for the toolbar
+function calculateSelectedElementPosition() {
+  if (!selectedElement.value || !pageContent.value) return;
+
+  // Find the element in the DOM
+  const elementId = selectedElement.value.id;
+
+  // Try to find the element by data-element-id attribute first
+  let elementDom = pageContent.value.querySelector(
+    `[data-element-id="${elementId}"]`
+  );
+
+  // If not found, try to find the element wrapper that contains this element
+  if (!elementDom) {
+    // Find all element wrappers
+    const elementWrappers =
+      pageContent.value.querySelectorAll(".element-wrapper");
+
+    // Loop through wrappers to find the one with our element
+    for (const wrapper of elementWrappers) {
+      // Check if this wrapper contains our element
+      const component = wrapper.querySelector(".element");
+      if (
+        component &&
+        component.classList.contains(`element-${selectedElement.value.id}`)
+      ) {
+        elementDom = component;
+        break;
+      }
+    }
+
+    // If still not found, use the element's position directly
+    if (!elementDom && selectedElement.value) {
+      selectedElementPosition.value = {
+        top: selectedElement.value.position.y,
+        left: selectedElement.value.position.x,
+        width: selectedElement.value.size.width,
+      };
+      return;
+    }
+  }
+
+  if (elementDom) {
+    const rect = elementDom.getBoundingClientRect();
+    const pageRect = pageContent.value.getBoundingClientRect();
+
+    // Calculate position relative to the page content
+    selectedElementPosition.value = {
+      top: rect.top - pageRect.top,
+      left: rect.left - pageRect.left,
+      width: rect.width,
+    };
+  }
+}
+
+// Get the index of an element in the sortedElements array
+function getElementIndex(element: DocumentElement): number {
+  if (!element || !sortedElements.value) return 0;
+
+  return sortedElements.value.findIndex((el) => el.id === element.id);
 }
 
 function updateElement(element: DocumentElement) {
@@ -322,6 +410,23 @@ function toggleGrid() {
 // Expose methods to parent components
 defineExpose({
   // No special methods needed anymore
+});
+
+// Function to handle window resize
+const handleResize = () => {
+  if (selectedElement.value) {
+    calculateSelectedElementPosition();
+  }
+};
+
+// Add window resize listener to recalculate element position
+onMounted(() => {
+  window.addEventListener("resize", handleResize);
+});
+
+// Clean up event listeners
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", handleResize);
 });
 
 // Global error handler for async components
@@ -378,7 +483,6 @@ onErrorCaptured((error, instance, info) => {
 
 .element-wrapper {
   position: relative;
-  margin-top: 44px; /* Add space for the modernized layer controls */
 
   // We no longer force z-index on hover to maintain proper layer ordering
   // Layer controls will be visible due to their own z-index

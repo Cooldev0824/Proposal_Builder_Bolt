@@ -1,23 +1,11 @@
 <template>
-  <div class="element-layer-controls" v-show="true">
+  <div class="element-layer-controls">
     <div class="layer-info">
-      <div class="layer-badge">
-        <div class="layer-number">{{ layerIndex + 1 }}</div>
-      </div>
-      <div class="layer-details">
-        <div class="layer-type">
-          <v-icon
-            size="small"
-            :icon="getElementIcon(element.type)"
-            class="type-icon"
-          ></v-icon>
-        </div>
-        <div class="layer-name">{{ getElementName(element) }}</div>
-      </div>
+      <!-- Hidden in this layout -->
     </div>
 
     <div class="layer-actions">
-      <v-tooltip location="top" content-class="layer-tooltip">
+      <v-tooltip location="left" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
           <button
             v-bind="props"
@@ -27,13 +15,13 @@
             @click.stop="$emit('move-to-top', element)"
             aria-label="Bring to Front"
           >
-            <v-icon size="small">mdi-arrow-collapse-up</v-icon>
+            <v-icon>mdi-arrow-collapse-up</v-icon>
           </button>
         </template>
         <span>Bring to Front</span>
       </v-tooltip>
 
-      <v-tooltip location="top" content-class="layer-tooltip">
+      <v-tooltip location="left" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
           <button
             v-bind="props"
@@ -43,13 +31,13 @@
             @click.stop="$emit('move-up', element)"
             aria-label="Move Up"
           >
-            <v-icon size="small">mdi-arrow-up</v-icon>
+            <v-icon>mdi-arrow-up</v-icon>
           </button>
         </template>
         <span>Move Up</span>
       </v-tooltip>
 
-      <v-tooltip location="top" content-class="layer-tooltip">
+      <v-tooltip location="left" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
           <button
             v-bind="props"
@@ -59,13 +47,13 @@
             @click.stop="$emit('move-down', element)"
             aria-label="Move Down"
           >
-            <v-icon size="small">mdi-arrow-down</v-icon>
+            <v-icon>mdi-arrow-down</v-icon>
           </button>
         </template>
         <span>Move Down</span>
       </v-tooltip>
 
-      <v-tooltip location="top" content-class="layer-tooltip">
+      <v-tooltip location="left" content-class="layer-tooltip">
         <template v-slot:activator="{ props }">
           <button
             v-bind="props"
@@ -75,7 +63,7 @@
             @click.stop="$emit('move-to-bottom', element)"
             aria-label="Send to Back"
           >
-            <v-icon size="small">mdi-arrow-collapse-down</v-icon>
+            <v-icon>mdi-arrow-collapse-down</v-icon>
           </button>
         </template>
         <span>Send to Back</span>
@@ -102,177 +90,114 @@ defineEmits<{
   (e: "move-to-bottom", element: DocumentElement): void;
 }>();
 
+// Compute whether the element is at the top or bottom of the stack
 const isTopLayer = computed(() => props.layerIndex === props.totalLayers - 1);
 const isBottomLayer = computed(() => props.layerIndex === 0);
-
-function getElementIcon(type: string): string {
-  switch (type) {
-    case "text":
-      return "mdi-format-text";
-    case "image":
-      return "mdi-image";
-    case "shape":
-      return "mdi-shape";
-    case "table":
-      return "mdi-table";
-    case "signature":
-      return "mdi-draw";
-    case "form":
-      return "mdi-form-select";
-    case "grid":
-      return "mdi-grid";
-    default:
-      return "mdi-shape-outline";
-  }
-}
-
-function getElementName(element: DocumentElement): string {
-  // Create a user-friendly name based on element type and content
-  const prefix = element.type.charAt(0).toUpperCase() + element.type.slice(1);
-
-  switch (element.type) {
-    case "text":
-      // For text elements, use the first few words
-      const text =
-        typeof element.content === "string"
-          ? element.content.replace(/<[^>]*>/g, "") // Remove HTML tags
-          : "";
-      const shortText = text.length > 15 ? text.substring(0, 15) + "..." : text;
-      return shortText || `${prefix}`;
-
-    case "shape":
-      // For shapes, include the shape type
-      return `${prefix}: ${element.content || "Rectangle"}`;
-
-    case "image":
-      return `${prefix}`;
-
-    default:
-      return `${prefix}`;
-  }
-}
 </script>
 
 <style scoped lang="scss">
 .element-layer-controls {
   position: absolute;
-  top: -44px;
-  left: 0;
-  right: 0;
-  height: 44px;
-  background-color: rgba(255, 255, 255, 0.98);
+  top: 0;
+  right: -60px; /* Position to the right of the element */
+  width: 50px;
+  background-color: rgba(255, 255, 255, 0.95);
   border: none;
-  border-radius: 8px 8px 0 0;
+  border-radius: 12px;
   display: flex;
+  flex-direction: column; /* Stack buttons vertically */
   align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  z-index: 2000;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  justify-content: center;
+  padding: 10px 5px;
+  z-index: 3000; /* Ensure it's above the ruler (z-index: 1000) */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   font-size: 14px;
   pointer-events: all;
-  backdrop-filter: blur(4px);
-  transition: all 0.2s ease;
-  animation: slideDown 0.3s ease-out;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity; /* Optimize animations */
+  border-left: 3px solid var(--primary);
 
   &:hover {
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+    transform: translateX(-2px);
   }
 }
 
 .layer-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.layer-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.layer-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  background-color: var(--primary);
-  color: white;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 13px;
-  box-shadow: 0 2px 4px rgba(12, 132, 254, 0.2);
-}
-
-.layer-details {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.layer-type {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background-color: rgba(12, 132, 254, 0.1);
-  border-radius: 6px;
-
-  .type-icon {
-    color: var(--primary);
-  }
-}
-
-.layer-name {
-  font-weight: 500;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  color: var(--text-primary);
+  display: none; /* Hide the layer info in this compact layout */
 }
 
 .layer-actions {
   display: flex;
-  gap: 4px;
-  background-color: rgba(245, 247, 250, 0.8);
-  border-radius: 6px;
-  padding: 2px;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
 }
 
 .action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   border: none;
-  background-color: transparent;
-  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
   cursor: pointer;
   color: var(--primary);
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
+  margin: 2px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--primary);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border-radius: 10px;
+    z-index: -1;
+  }
 
   &:hover {
-    background-color: rgba(12, 132, 254, 0.1);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(12, 132, 254, 0.2);
+
+    &::before {
+      opacity: 1;
+    }
   }
 
   &:active {
-    background-color: rgba(12, 132, 254, 0.2);
-    transform: scale(0.95);
+    transform: scale(0.95) translateY(0);
+    box-shadow: 0 2px 8px rgba(12, 132, 254, 0.1);
   }
 
   &.disabled {
     color: var(--text-disabled);
     cursor: not-allowed;
+    background-color: rgba(245, 247, 250, 0.5);
+    box-shadow: none;
 
     &:hover {
-      background-color: transparent;
+      transform: none;
+      color: var(--text-disabled);
+      background-color: rgba(245, 247, 250, 0.5);
+      box-shadow: none;
+
+      &::before {
+        opacity: 0;
+      }
     }
 
     &:active {
@@ -283,20 +208,25 @@ function getElementName(element: DocumentElement): string {
 
 .layer-tooltip {
   font-size: 12px;
-  padding: 4px 8px;
-  background-color: rgba(30, 30, 30, 0.9);
+  padding: 6px 10px;
+  background-color: rgba(30, 30, 30, 0.85);
   color: white;
-  border-radius: 4px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(4px);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  border-left: 2px solid var(--primary);
 }
 
-@keyframes slideDown {
-  from {
+@keyframes fadeIn {
+  0% {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateX(15px);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 </style>
