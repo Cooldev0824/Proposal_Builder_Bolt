@@ -81,7 +81,7 @@ export async function exportToPdf(
     const pageClone = page.cloneNode(true) as HTMLElement;
 
     // Process the clone to ensure proper rendering
-    processPageForExport(pageClone, mergedOptions);
+    processPageForExport(pageClone);
 
     // Create a temporary container for the cloned page
     const tempContainer = document.createElement("div");
@@ -159,6 +159,32 @@ export async function exportToPdf(
         windowHeight: paperSize.height + 50,
         foreignObjectRendering: false,
         onclone: (clonedDoc) => {
+          // Process images to ensure they're displayed at natural size and cropped
+          const images = clonedDoc.querySelectorAll("img");
+          images.forEach((img) => {
+            if (img instanceof HTMLElement) {
+              // Make sure the image is visible
+              img.style.visibility = "visible";
+              img.style.opacity = "1";
+
+              // Make sure the parent container has overflow hidden
+              const parent = img.parentElement;
+              if (parent && parent instanceof HTMLElement) {
+                parent.style.overflow = "hidden";
+
+                // Set image styles to ensure the height matches the block height and width is auto-calculated
+                img.style.width = "auto"; // Width will be calculated based on height
+                img.style.height = "100%"; // Match the height of the container
+                img.style.position = "absolute";
+
+                // Center the image horizontally
+                img.style.left = "50%";
+                img.style.transform = "translateX(-50%)";
+                img.style.top = "0";
+              }
+            }
+          });
+
           // Process SVG elements in the cloned document
           const clonedSvgs = clonedDoc.querySelectorAll("svg");
           clonedSvgs.forEach((svg) => {
@@ -220,6 +246,25 @@ export async function exportToPdf(
           elements.forEach((el) => {
             if (el instanceof HTMLElement) {
               el.style.visibility = "visible";
+
+              // Special handling for images
+              if (el.tagName === "IMG") {
+                const img = el as HTMLImageElement;
+
+                // Check if this is inside an image element container
+                const parent = img.closest('[style*="overflow: hidden"]');
+                if (parent) {
+                  // Set image styles to ensure the height matches the block height and width is auto-calculated
+                  img.style.width = "auto"; // Width will be calculated based on height
+                  img.style.height = "100%"; // Match the height of the container
+                  img.style.position = "absolute";
+
+                  // Center the image horizontally
+                  img.style.left = "50%";
+                  img.style.transform = "translateX(-50%)";
+                  img.style.top = "0";
+                }
+              }
             }
           });
         },
@@ -454,10 +499,56 @@ export async function directExportToPdf(
           }
         } else if (element.type === "image") {
           const img = document.createElement("img");
-          img.src = element.content || "";
-          img.style.width = "100%";
-          img.style.height = "100%";
-          img.style.objectFit = element.style?.objectFit || "contain";
+
+          // Extract image source
+          let imgSrc = "";
+          if (element.content) {
+            if (typeof element.content === "string") {
+              if (
+                element.content.startsWith("data:") ||
+                element.content.startsWith("http") ||
+                element.content.startsWith("/")
+              ) {
+                imgSrc = element.content;
+              } else {
+                try {
+                  const contentObj = JSON.parse(element.content);
+                  if (contentObj.src) {
+                    imgSrc = contentObj.src;
+                  } else {
+                    imgSrc = element.content;
+                  }
+                } catch (e) {
+                  imgSrc = element.content;
+                }
+              }
+            } else if (
+              typeof element.content === "object" &&
+              element.content.src
+            ) {
+              imgSrc = element.content.src;
+            } else {
+              imgSrc = String(element.content);
+            }
+          }
+
+          // Set the image source
+          img.src = imgSrc || "";
+
+          // Set image styles to ensure the height matches the block height and width is auto-calculated
+          img.style.width = "auto"; // Width will be calculated based on height
+          img.style.height = "100%"; // Match the height of the container
+          img.style.position = "absolute";
+
+          // Center the image horizontally
+          img.style.left = "50%";
+          img.style.transform = "translateX(-50%)";
+          img.style.top = "0";
+
+          // Add overflow hidden to the container to ensure cropping
+          elementContainer.style.overflow = "hidden";
+
+          // Add the image to the container
           elementContainer.appendChild(img);
         } else if (element.type === "shape") {
           // Create an SVG element for the shape
@@ -599,10 +690,54 @@ export async function directExportToPdf(
         } else if (element.type === "signature") {
           if (element.content) {
             const img = document.createElement("img");
-            img.src = element.content;
-            img.style.width = "100%";
-            img.style.height = "100%";
-            img.style.objectFit = "contain";
+
+            // Extract signature source
+            let imgSrc = "";
+            if (typeof element.content === "string") {
+              if (
+                element.content.startsWith("data:") ||
+                element.content.startsWith("http") ||
+                element.content.startsWith("/")
+              ) {
+                imgSrc = element.content;
+              } else {
+                try {
+                  const contentObj = JSON.parse(element.content);
+                  if (contentObj.src) {
+                    imgSrc = contentObj.src;
+                  } else {
+                    imgSrc = element.content;
+                  }
+                } catch (e) {
+                  imgSrc = element.content;
+                }
+              }
+            } else if (
+              typeof element.content === "object" &&
+              element.content.src
+            ) {
+              imgSrc = element.content.src;
+            } else {
+              imgSrc = String(element.content);
+            }
+
+            // Set the image source
+            img.src = imgSrc;
+
+            // Set image styles to ensure the height matches the block height and width is auto-calculated
+            img.style.width = "auto"; // Width will be calculated based on height
+            img.style.height = "100%"; // Match the height of the container
+            img.style.position = "absolute";
+
+            // Center the image horizontally
+            img.style.left = "50%";
+            img.style.transform = "translateX(-50%)";
+            img.style.top = "0";
+
+            // Add overflow hidden to the container to ensure cropping
+            elementContainer.style.overflow = "hidden";
+
+            // Add the image to the container
             elementContainer.appendChild(img);
           } else {
             elementContainer.style.border = "1px dashed #999";
@@ -612,7 +747,10 @@ export async function directExportToPdf(
           elementContainer.style.borderRadius = "4px";
           elementContainer.style.backgroundColor = "#f9f9f9";
 
-          if (element.formType === "textfield") {
+          // Cast element to any to access form-specific properties
+          const formElement = element as any;
+
+          if (formElement.formType === "textfield") {
             const input = document.createElement("input");
             input.type = "text";
             input.style.width = "100%";
@@ -620,10 +758,10 @@ export async function directExportToPdf(
             input.style.boxSizing = "border-box";
             input.style.border = "none";
             input.style.backgroundColor = "transparent";
-            input.value = element.value || "";
+            input.value = formElement.value || "";
             input.disabled = true;
             elementContainer.appendChild(input);
-          } else if (element.formType === "checkbox") {
+          } else if (formElement.formType === "checkbox") {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
             checkbox.style.width = "20px";
@@ -633,7 +771,7 @@ export async function directExportToPdf(
             checkbox.style.top = "50%";
             checkbox.style.left = "50%";
             checkbox.style.transform = "translate(-50%, -50%)";
-            checkbox.checked = element.checked || false;
+            checkbox.checked = formElement.checked || false;
             checkbox.disabled = true;
             elementContainer.appendChild(checkbox);
           }
@@ -675,12 +813,8 @@ export async function directExportToPdf(
 /**
  * Process a page element for export
  * @param pageElement The page element to process
- * @param options PDF export options
  */
-function processPageForExport(
-  pageElement: HTMLElement,
-  options: PdfExportOptions
-): void {
+function processPageForExport(pageElement: HTMLElement): void {
   // Hide UI controls that shouldn't appear in the PDF
   const uiElements = pageElement.querySelectorAll(
     ".resize-handle, .scroll-control, .v-navigation-drawer, " +
