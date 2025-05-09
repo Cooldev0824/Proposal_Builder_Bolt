@@ -114,7 +114,7 @@ import type { Document } from "../../types/document";
 import {
   exportToPdf,
   type PdfExportOptions,
-} from "../../services/pdfExportService2";
+} from "../../services/pdfExportService";
 import { getPaperSizeByName, getLandscapeSize } from "../../utils/paperSizes";
 
 const props = defineProps<{
@@ -280,8 +280,14 @@ async function exportPdf() {
         elementContainer.style.position = "absolute";
 
         // Explicitly subtract 30px from both x and y to remove ruler space
-        elementContainer.style.left = `${Math.max(0, element.position.x - 30)}px`;
-        elementContainer.style.top = `${Math.max(0, element.position.y - 30)}px`;
+        elementContainer.style.left = `${Math.max(
+          0,
+          element.position.x - 30
+        )}px`;
+        elementContainer.style.top = `${Math.max(
+          0,
+          element.position.y - 30
+        )}px`;
         elementContainer.style.width = `${element.size.width}px`;
         elementContainer.style.height = `${element.size.height}px`;
         elementContainer.style.zIndex = `${element.zIndex || 0}`;

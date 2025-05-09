@@ -84,13 +84,13 @@
 
 <script setup lang="ts">
 // 1. Imports
-import { computed } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import type { DocumentElement } from "../../types/document";
 import type { CSSProperties } from "vue";
 import { getElementIcon, getElementName } from "../../utils/elementUtils";
 
 // Import styles
-import '../../assets/styles/components/elementToolbar.scss';
+import "../../assets/styles/components/elementToolbar.scss";
 
 // 2. Types
 /**
@@ -131,7 +131,9 @@ defineEmits<{
 /**
  * Determines if the element is at the top of the layer stack
  */
-const isTopLayer = computed((): boolean => props.layerIndex === props.totalLayers - 1);
+const isTopLayer = computed(
+  (): boolean => props.layerIndex === props.totalLayers - 1
+);
 
 /**
  * Determines if the element is at the bottom of the layer stack
@@ -144,8 +146,8 @@ const isBottomLayer = computed((): boolean => props.layerIndex === 0);
 const toolbarStyle = computed((): CSSProperties => {
   if (!props.elementPosition) return {};
 
-  // Calculate width with min/max constraints
-  const width = Math.min(Math.max(props.elementPosition.width, 250), 400);
+  // Calculate width with min/max constraints - smaller width
+  const width = Math.min(Math.max(props.elementPosition.width, 220), 320);
 
   // Calculate left position to center the toolbar
   const left = Math.max(
@@ -156,15 +158,44 @@ const toolbarStyle = computed((): CSSProperties => {
   // Calculate top position, ensuring it's not negative
   const top = Math.max(10, props.elementPosition.top - 50);
 
+  // Check if we're on a mobile device using reactive windowWidth
+  const isMobile = windowWidth.value <= 480;
+
+  // For mobile, we might want to position differently
+  if (isMobile) {
+    return {
+      left: `${Math.max(5, left)}px`,
+      top: `${top}px`,
+      width: `${Math.min(width, windowWidth.value - 20)}px`, // Ensure it fits on screen
+      maxWidth: "calc(100vw - 20px)", // Prevent overflow
+    };
+  }
+
   return {
     left: `${left}px`,
     top: `${top}px`,
-    width: `${width}px`, // Min width 250px, max 400px
+    width: `${width}px`, // Min width 220px, max 320px
   };
 });
 
-// 5. Methods
+// 5. Reactive Window Width
+// Track window width for responsive adjustments
+const windowWidth = ref(window.innerWidth);
+
+// Update window width on resize
+const updateWindowWidth = () => {
+  windowWidth.value = window.innerWidth;
+};
+
+// Add and remove event listeners
+onMounted(() => {
+  window.addEventListener("resize", updateWindowWidth);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateWindowWidth);
+});
+
+// 6. Methods
 // Element icon and name functions are now imported from elementUtils.ts
 </script>
-
-

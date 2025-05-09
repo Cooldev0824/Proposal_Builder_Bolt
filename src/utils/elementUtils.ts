@@ -1,5 +1,4 @@
-import type { DocumentElement } from '../types/document';
-import { v4 as uuidv4 } from 'uuid';
+import type { DocumentElement } from "../types/document";
 
 /**
  * Element Utilities
@@ -54,24 +53,15 @@ export function getElementName(element: DocumentElement): string {
 
   switch (element.type) {
     case "text":
-      // For text elements, use the first few words
-      const text =
-        typeof element.content === "string"
-          ? element.content.replace(/<[^>]*>/g, "") // Remove HTML tags
-          : "";
-      const shortText = text.length > 15 ? text.substring(0, 15) + "..." : text;
-      return shortText || `${prefix}`;
+      return "Text";
 
     case "shape":
-      // For shapes, include the shape type
-      return `${prefix}: ${element.content || "Rectangle"}`;
+      return "Shape";
 
     case "image":
-      return `${prefix}`;
-
+      return "Image";
     case "group":
-      return `Group (${element.children?.length || 0} items)`;
-
+      return "Group";
     default:
       return `${prefix}`;
   }
@@ -91,20 +81,20 @@ export function createTextElement(
   y: number,
   width: number = 200,
   height: number = 100,
-  content: string = 'New text block'
+  content: string = "New text block"
 ): DocumentElement {
   return {
-    id: generateElementId('text'),
-    type: 'text',
+    id: generateElementId("text"),
+    type: "text",
     content,
     position: { x, y },
     size: { width, height },
     style: {
-      fontFamily: 'Roboto',
+      fontFamily: "Roboto",
       fontSize: 16,
-      fontWeight: 'normal',
-      color: '#000000',
-      backgroundColor: 'transparent',
+      fontWeight: "normal",
+      color: "#000000",
+      backgroundColor: "transparent",
     },
     zIndex: 1,
   };
@@ -124,18 +114,18 @@ export function createImageElement(
   y: number,
   width: number = 200,
   height: number = 200,
-  imageUrl: string = ''
+  imageUrl: string = ""
 ): DocumentElement {
   return {
-    id: generateElementId('image'),
-    type: 'image',
+    id: generateElementId("image"),
+    type: "image",
     content: imageUrl,
     position: { x, y },
     size: { width, height },
     style: {
       borderRadius: 0,
       borderWidth: 0,
-      borderColor: '#000000',
+      borderColor: "#000000",
       opacity: 1,
     },
     zIndex: 1,
@@ -156,17 +146,17 @@ export function createShapeElement(
   y: number,
   width: number = 100,
   height: number = 100,
-  shapeType: 'rectangle' | 'circle' | 'triangle' | 'arrow' = 'rectangle'
+  shapeType: "rectangle" | "circle" | "triangle" | "arrow" = "rectangle"
 ): DocumentElement {
   return {
-    id: generateElementId('shape'),
-    type: 'shape',
+    id: generateElementId("shape"),
+    type: "shape",
     content: shapeType,
     position: { x, y },
     size: { width, height },
     style: {
-      fill: '#e0e0e0',
-      stroke: '#000000',
+      fill: "#e0e0e0",
+      stroke: "#000000",
       strokeWidth: 1,
       opacity: 1,
     },
@@ -191,16 +181,16 @@ export function createGroupElement(
   children: DocumentElement[] = []
 ): DocumentElement {
   return {
-    id: generateElementId('group'),
-    type: 'group',
-    content: 'Group',
+    id: generateElementId("group"),
+    type: "group",
+    content: "Group",
     position: { x, y },
     size: { width, height },
     style: {
       borderWidth: 1,
-      borderStyle: 'dashed',
-      borderColor: '#666',
-      backgroundColor: 'transparent',
+      borderStyle: "dashed",
+      borderColor: "#666",
+      backgroundColor: "transparent",
       opacity: 1,
     },
     zIndex: 1,
@@ -234,8 +224,8 @@ export function duplicateElement(
 
   // If it's a group, recursively duplicate children
   if (element.children && element.children.length > 0) {
-    duplicate.children = element.children.map(child =>
-      duplicateElement(child, 0, 0) // No offset for children
+    duplicate.children = element.children.map(
+      (child) => duplicateElement(child, 0, 0) // No offset for children
     );
   }
 

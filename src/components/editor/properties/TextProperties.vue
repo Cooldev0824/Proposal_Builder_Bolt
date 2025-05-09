@@ -773,7 +773,7 @@ function transformText(
       selection.addRange(newRange);
 
       // Apply the change to the element
-      directlyApplyStyle();
+      directlyApplyStyle("style", "");
     }
   } else {
     // If no selection, transform the entire text content
@@ -853,7 +853,7 @@ function clearFormatting() {
       selection.addRange(newRange);
 
       // Apply the change to the element
-      directlyApplyStyle();
+      directlyApplyStyle("style", "");
     }
   } else {
     // If no selection, clear formatting for the entire element

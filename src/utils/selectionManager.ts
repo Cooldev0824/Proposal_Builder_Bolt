@@ -1069,7 +1069,9 @@ export function applyStyleDirectly(
         const fontElements = savedElement.querySelectorAll('font[size="7"]');
         fontElements.forEach((font) => {
           font.removeAttribute("size");
-          font.style.fontSize = value;
+          if (font instanceof HTMLElement) {
+            font.style.fontSize = value;
+          }
         });
 
         return true;

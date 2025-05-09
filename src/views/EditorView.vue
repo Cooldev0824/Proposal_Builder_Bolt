@@ -215,6 +215,7 @@ const showDocumentSizeDialog = ref(false);
 const isExportingPdf = ref(false);
 const showLayerPanel = ref(true); // Always show layer panel
 const activeTab = ref("properties"); // Default to properties tab
+// isLoadingDocument is already defined below
 
 // Delete dialog state
 const showDeleteDialog = ref(false);
@@ -323,9 +324,8 @@ onMounted(async () => {
     });
   }
 
-  // Reset loading flag and unsaved changes flag
+  // Reset loading flag
   isLoadingDocument.value = false;
-  resetUnsavedChanges();
 });
 
 function handleUndo() {
@@ -401,6 +401,8 @@ function deleteElement(element: DocumentElement) {
     selectedElement.value = null;
   }
 }
+
+// Using the getHighestZIndex function defined below
 
 function duplicateElement(element: DocumentElement) {
   const highestZIndex = getHighestZIndex();

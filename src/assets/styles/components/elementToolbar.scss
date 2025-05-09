@@ -19,7 +19,7 @@
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-bottom: 3px solid rgba(var(--primary-rgb), 0.8);
-  min-width: 250px;
+  min-width: 220px;
   margin-top: 10px;
 
   &:hover {
@@ -152,5 +152,52 @@
 
   .element-type {
     max-width: 100px;
+  }
+
+  .toolbar-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .toolbar-divider {
+    margin: 0 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .element-toolbar {
+    min-width: 180px;
+    padding: 5px 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .element-info {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+
+  .toolbar-divider {
+    display: none;
+  }
+
+  .layer-controls {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .element-type {
+    max-width: 90px;
+    font-size: 12px;
+  }
+
+  .layer-number {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .toolbar-btn {
+    width: 26px;
+    height: 26px;
   }
 }

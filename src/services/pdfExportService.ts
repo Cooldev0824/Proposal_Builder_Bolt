@@ -13,6 +13,8 @@ export interface PdfExportOptions {
     bottom?: number;
     left?: number;
   };
+  paperSize?: string;
+  orientation?: "portrait" | "landscape";
 }
 
 const defaultOptions: PdfExportOptions = {
@@ -453,7 +455,7 @@ export async function directExportToPdf(
       pageContainer.appendChild(elementsContainer);
 
       // Render each element in the section
-      section.elements.forEach(element => {
+      section.elements.forEach((element) => {
         const elementDiv = document.createElement("div");
         elementDiv.style.position = "absolute";
         elementDiv.style.left = `${element.position.x}px`;
@@ -470,7 +472,8 @@ export async function directExportToPdf(
             elementDiv.style.fontSize = `${element.style.fontSize || 16}px`;
             elementDiv.style.fontWeight = element.style.fontWeight || "normal";
             elementDiv.style.color = element.style.color || "#000000";
-            elementDiv.style.backgroundColor = element.style.backgroundColor || "transparent";
+            elementDiv.style.backgroundColor =
+              element.style.backgroundColor || "transparent";
           }
         } else if (element.type === "image") {
           const img = document.createElement("img");
@@ -482,7 +485,9 @@ export async function directExportToPdf(
         } else if (element.type === "shape") {
           // Simple representation of shapes
           elementDiv.style.backgroundColor = element.style?.fill || "#E2E8F0";
-          elementDiv.style.border = `${element.style?.strokeWidth || 1}px solid ${element.style?.stroke || "#CBD5E1"}`;
+          elementDiv.style.border = `${
+            element.style?.strokeWidth || 1
+          }px solid ${element.style?.stroke || "#CBD5E1"}`;
           if (element.content === "circle") {
             elementDiv.style.borderRadius = "50%";
           }

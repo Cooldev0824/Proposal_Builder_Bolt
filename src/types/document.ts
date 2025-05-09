@@ -33,6 +33,9 @@ export type DocumentElement = {
   style?: any;
   zIndex?: number;
   children?: DocumentElement[];
+  formType?: string;
+  value?: string;
+  checked?: boolean;
 };
 
 export interface TextElement extends DocumentElement {
