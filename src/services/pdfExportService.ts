@@ -181,6 +181,87 @@ export async function exportToPdf(
             }
           });
 
+          // Process text elements to ensure styles are applied correctly
+          const textElements = clonedDoc.querySelectorAll(".text-element");
+          textElements.forEach((element) => {
+            if (element instanceof HTMLElement) {
+              // Force background color to be applied to the text element container
+              // This is critical for block backgrounds
+              const computedStyle = window.getComputedStyle(element);
+              const backgroundColor = computedStyle.backgroundColor;
+
+              if (
+                backgroundColor &&
+                backgroundColor !== "rgba(0, 0, 0, 0)" &&
+                backgroundColor !== "transparent"
+              ) {
+                // Apply the background color with !important to ensure it's rendered
+                element.style.setProperty(
+                  "background-color",
+                  backgroundColor,
+                  "important"
+                );
+                // Add padding to ensure the background is visible
+                element.style.setProperty("padding", "8px", "important");
+              }
+
+              // Find the content element
+              const contentElement = element.querySelector(".element-content");
+              if (contentElement instanceof HTMLElement) {
+                // Ensure text color is applied
+                if (contentElement.style.color) {
+                  // Apply color to all child elements
+                  const textNodes = contentElement.querySelectorAll("*");
+                  textNodes.forEach((node) => {
+                    if (node instanceof HTMLElement && !node.style.color) {
+                      node.style.setProperty(
+                        "color",
+                        contentElement.style.color,
+                        "important"
+                      );
+                    }
+                  });
+                }
+
+                // Ensure font styles are applied
+                if (contentElement.style.fontFamily) {
+                  contentElement.style.setProperty(
+                    "font-family",
+                    contentElement.style.fontFamily,
+                    "important"
+                  );
+                }
+                if (contentElement.style.fontSize) {
+                  contentElement.style.setProperty(
+                    "font-size",
+                    contentElement.style.fontSize,
+                    "important"
+                  );
+                }
+                if (contentElement.style.fontWeight) {
+                  contentElement.style.setProperty(
+                    "font-weight",
+                    contentElement.style.fontWeight,
+                    "important"
+                  );
+                }
+
+                // Make the content element transparent if the parent has a background
+                if (
+                  backgroundColor &&
+                  backgroundColor !== "rgba(0, 0, 0, 0)" &&
+                  backgroundColor !== "transparent"
+                ) {
+                  contentElement.style.setProperty(
+                    "background-color",
+                    "transparent",
+                    "important"
+                  );
+                }
+              }
+            }
+          });
+
           // Find shape elements that are triangles and ensure they're properly rendered
           const shapeElements = clonedDoc.querySelectorAll(".shape-element");
           shapeElements.forEach((element) => {
@@ -417,6 +498,87 @@ function processPageForExport(
     }
   });
 
+  // Process text elements to ensure styles are applied correctly
+  const textElements = pageElement.querySelectorAll(".text-element");
+  textElements.forEach((element) => {
+    if (element instanceof HTMLElement) {
+      // Force background color to be applied to the text element container
+      // This is critical for block backgrounds
+      const computedStyle = window.getComputedStyle(element);
+      const backgroundColor = computedStyle.backgroundColor;
+
+      if (
+        backgroundColor &&
+        backgroundColor !== "rgba(0, 0, 0, 0)" &&
+        backgroundColor !== "transparent"
+      ) {
+        // Apply the background color with !important to ensure it's rendered
+        element.style.setProperty(
+          "background-color",
+          backgroundColor,
+          "important"
+        );
+        // Add padding to ensure the background is visible
+        element.style.setProperty("padding", "8px", "important");
+      }
+
+      // Find the content element
+      const contentElement = element.querySelector(".element-content");
+      if (contentElement instanceof HTMLElement) {
+        // Ensure text color is applied
+        if (contentElement.style.color) {
+          // Apply color to all child elements
+          const textNodes = contentElement.querySelectorAll("*");
+          textNodes.forEach((node) => {
+            if (node instanceof HTMLElement && !node.style.color) {
+              node.style.setProperty(
+                "color",
+                contentElement.style.color,
+                "important"
+              );
+            }
+          });
+        }
+
+        // Ensure font styles are applied
+        if (contentElement.style.fontFamily) {
+          contentElement.style.setProperty(
+            "font-family",
+            contentElement.style.fontFamily,
+            "important"
+          );
+        }
+        if (contentElement.style.fontSize) {
+          contentElement.style.setProperty(
+            "font-size",
+            contentElement.style.fontSize,
+            "important"
+          );
+        }
+        if (contentElement.style.fontWeight) {
+          contentElement.style.setProperty(
+            "font-weight",
+            contentElement.style.fontWeight,
+            "important"
+          );
+        }
+
+        // Make the content element transparent if the parent has a background
+        if (
+          backgroundColor &&
+          backgroundColor !== "rgba(0, 0, 0, 0)" &&
+          backgroundColor !== "transparent"
+        ) {
+          contentElement.style.setProperty(
+            "background-color",
+            "transparent",
+            "important"
+          );
+        }
+      }
+    }
+  });
+
   // Process SVG elements
   const svgElements = pageElement.querySelectorAll("svg");
   svgElements.forEach((svg) => {
@@ -539,13 +701,34 @@ export async function directExportToPdf(
         // Add content based on element type
         if (element.type === "text") {
           elementDiv.innerHTML = element.content;
+          elementDiv.className = "text-element";
+
+          // Create a content element to match the structure in the editor
+          const contentElement = document.createElement("div");
+          contentElement.className = "element-content";
+          contentElement.innerHTML = element.content;
+          elementDiv.innerHTML = ""; // Clear the div
+          elementDiv.appendChild(contentElement);
+
           if (element.style) {
-            elementDiv.style.fontFamily = element.style.fontFamily || "Arial";
-            elementDiv.style.fontSize = `${element.style.fontSize || 16}px`;
-            elementDiv.style.fontWeight = element.style.fontWeight || "normal";
-            elementDiv.style.color = element.style.color || "#000000";
-            elementDiv.style.backgroundColor =
-              element.style.backgroundColor || "transparent";
+            // Apply styles to the content element
+            contentElement.style.fontFamily =
+              element.style.fontFamily || "Arial";
+            contentElement.style.fontSize = `${element.style.fontSize || 16}px`;
+            contentElement.style.fontWeight =
+              element.style.fontWeight || "normal";
+            contentElement.style.color = element.style.color || "#000000";
+
+            // Handle block background
+            if (element.style.blockBackground) {
+              elementDiv.style.backgroundColor =
+                element.style.blockBackgroundColor || "#f5f5f5";
+              elementDiv.style.padding = "8px";
+              contentElement.style.backgroundColor = "transparent";
+            } else {
+              contentElement.style.backgroundColor =
+                element.style.backgroundColor || "transparent";
+            }
           }
         } else if (element.type === "image") {
           const img = document.createElement("img");
