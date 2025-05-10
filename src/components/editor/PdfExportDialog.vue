@@ -280,15 +280,40 @@ async function exportPdf() {
         elementContainer.style.position = "absolute";
 
         // Explicitly subtract 30px from both x and y to remove ruler space
-        elementContainer.style.left = `${Math.max(0, element.position.x - 30)}px`;
-        elementContainer.style.top = `${Math.max(0, element.position.y - 30)}px`;
+        elementContainer.style.left = `${Math.max(
+          0,
+          element.position.x - 30
+        )}px`;
+        elementContainer.style.top = `${Math.max(
+          0,
+          element.position.y - 30
+        )}px`;
         elementContainer.style.width = `${element.size.width}px`;
         elementContainer.style.height = `${element.size.height}px`;
         elementContainer.style.zIndex = `${element.zIndex || 0}`;
 
+        // For rotated elements, we need special handling
+        let contentContainer = elementContainer;
+
+        // Apply rotation to the container if needed
+        // For line elements, we need to be careful with rotation to preserve orientation
+        if (
+          element.style?.rotation &&
+          !(element.type === "shape" && element.content === "line")
+        ) {
+          const rotation = element.style.rotation;
+
+          // Ensure rotated content is not clipped
+          elementContainer.style.overflow = "visible";
+
+          // Apply rotation to the container
+          elementContainer.style.transform = `rotate(${rotation}deg)`;
+          elementContainer.style.transformOrigin = "center center";
+        }
+
         // Add content based on element type
         if (element.type === "text") {
-          elementContainer.innerHTML = element.content || "";
+          contentContainer.innerHTML = element.content || "";
 
           // Apply text styles
           if (element.style) {
@@ -296,53 +321,53 @@ async function exportPdf() {
               if (value !== undefined && value !== null) {
                 switch (key) {
                   case "fontFamily":
-                    elementContainer.style.fontFamily = value as string;
+                    contentContainer.style.fontFamily = value as string;
                     break;
                   case "fontSize":
-                    elementContainer.style.fontSize = `${value}px`;
+                    contentContainer.style.fontSize = `${value}px`;
                     break;
                   case "bold":
-                    if (value) elementContainer.style.fontWeight = "bold";
+                    if (value) contentContainer.style.fontWeight = "bold";
                     break;
                   case "italic":
-                    if (value) elementContainer.style.fontStyle = "italic";
+                    if (value) contentContainer.style.fontStyle = "italic";
                     break;
                   case "underline":
                     if (value)
-                      elementContainer.style.textDecoration = "underline";
+                      contentContainer.style.textDecoration = "underline";
                     break;
                   case "color":
-                    elementContainer.style.color = value as string;
+                    contentContainer.style.color = value as string;
                     break;
                   case "backgroundColor":
-                    elementContainer.style.backgroundColor = value as string;
+                    contentContainer.style.backgroundColor = value as string;
                     break;
                   case "textAlign":
-                    elementContainer.style.textAlign = value as string;
+                    contentContainer.style.textAlign = value as string;
                     break;
                   case "lineHeight":
-                    elementContainer.style.lineHeight = value as string;
+                    contentContainer.style.lineHeight = value as string;
                     break;
                   case "letterSpacing":
-                    elementContainer.style.letterSpacing = `${value}px`;
+                    contentContainer.style.letterSpacing = `${value}px`;
                     break;
                   case "textIndent":
-                    elementContainer.style.textIndent = `${value}px`;
+                    contentContainer.style.textIndent = `${value}px`;
                     break;
                   case "paragraphIndent":
-                    elementContainer.style.marginLeft = `${value}px`;
+                    contentContainer.style.marginLeft = `${value}px`;
                     break;
                   case "listType":
                     if (value === "bullet") {
-                      elementContainer.style.listStyleType = "disc";
-                      elementContainer.style.listStylePosition = "inside";
-                      elementContainer.style.display = "list-item";
-                      elementContainer.style.paddingLeft = "20px";
+                      contentContainer.style.listStyleType = "disc";
+                      contentContainer.style.listStylePosition = "inside";
+                      contentContainer.style.display = "list-item";
+                      contentContainer.style.paddingLeft = "20px";
                     } else if (value === "number") {
-                      elementContainer.style.listStyleType = "decimal";
-                      elementContainer.style.listStylePosition = "inside";
-                      elementContainer.style.display = "list-item";
-                      elementContainer.style.paddingLeft = "20px";
+                      contentContainer.style.listStyleType = "decimal";
+                      contentContainer.style.listStylePosition = "inside";
+                      contentContainer.style.display = "list-item";
+                      contentContainer.style.paddingLeft = "20px";
                     }
                     break;
                 }
@@ -355,7 +380,7 @@ async function exportPdf() {
           img.style.width = "100%";
           img.style.height = "100%";
           img.style.objectFit = element.style?.objectFit || "contain";
-          elementContainer.appendChild(img);
+          contentContainer.appendChild(img);
         } else if (element.type === "shape") {
           // Create an SVG element for the shape
           const svg = window.document.createElementNS(
@@ -423,10 +448,25 @@ async function exportPdf() {
                 "http://www.w3.org/2000/svg",
                 "line"
               );
-              shapeElement.setAttribute("x1", "0");
-              shapeElement.setAttribute("y1", (height / 2).toString());
-              shapeElement.setAttribute("x2", width.toString());
-              shapeElement.setAttribute("y2", (height / 2).toString());
+
+              // Check if this is a vertical line based on the isVertical flag or dimensions
+              const isVertical =
+                element.style?.isVertical ||
+                element.size.height > element.size.width;
+
+              if (isVertical) {
+                // For vertical lines
+                shapeElement.setAttribute("x1", (width / 2).toString());
+                shapeElement.setAttribute("y1", "0");
+                shapeElement.setAttribute("x2", (width / 2).toString());
+                shapeElement.setAttribute("y2", height.toString());
+              } else {
+                // For horizontal lines
+                shapeElement.setAttribute("x1", "0");
+                shapeElement.setAttribute("y1", (height / 2).toString());
+                shapeElement.setAttribute("x2", width.toString());
+                shapeElement.setAttribute("y2", (height / 2).toString());
+              }
               break;
 
             case "arrow":
@@ -473,8 +513,13 @@ async function exportPdf() {
             }
           }
 
-          // Apply rotation if needed
-          if (rotation !== 0) {
+          // For line elements, we handle rotation at the container level
+          // to avoid issues with line orientation
+          if (shapeType === "line") {
+            svg.appendChild(shapeElement);
+          }
+          // For other shapes, apply rotation if needed
+          else if (rotation !== 0) {
             const g = window.document.createElementNS(
               "http://www.w3.org/2000/svg",
               "g"
@@ -489,10 +534,10 @@ async function exportPdf() {
             svg.appendChild(shapeElement);
           }
 
-          // Add the SVG to the element container
-          elementContainer.appendChild(svg);
+          // Add the SVG to the content container
+          contentContainer.appendChild(svg);
         } else if (element.type === "table") {
-          elementContainer.innerHTML = element.content || "";
+          contentContainer.innerHTML = element.content || "";
         } else if (element.type === "signature") {
           if (element.content) {
             const img = window.document.createElement("img");
@@ -500,14 +545,14 @@ async function exportPdf() {
             img.style.width = "100%";
             img.style.height = "100%";
             img.style.objectFit = "contain";
-            elementContainer.appendChild(img);
+            contentContainer.appendChild(img);
           } else {
-            elementContainer.style.border = "1px dashed #999";
+            contentContainer.style.border = "1px dashed #999";
           }
         } else if (element.type === "form") {
-          elementContainer.style.border = "1px solid #ddd";
-          elementContainer.style.borderRadius = "4px";
-          elementContainer.style.backgroundColor = "#f9f9f9";
+          contentContainer.style.border = "1px solid #ddd";
+          contentContainer.style.borderRadius = "4px";
+          contentContainer.style.backgroundColor = "#f9f9f9";
 
           if (element.formType === "textfield") {
             const input = window.document.createElement("input");
@@ -519,7 +564,7 @@ async function exportPdf() {
             input.style.backgroundColor = "transparent";
             input.value = element.value || "";
             input.disabled = true;
-            elementContainer.appendChild(input);
+            contentContainer.appendChild(input);
           } else if (element.formType === "checkbox") {
             const checkbox = window.document.createElement("input");
             checkbox.type = "checkbox";
@@ -532,7 +577,7 @@ async function exportPdf() {
             checkbox.style.transform = "translate(-50%, -50%)";
             checkbox.checked = element.checked || false;
             checkbox.disabled = true;
-            elementContainer.appendChild(checkbox);
+            contentContainer.appendChild(checkbox);
           }
         }
 

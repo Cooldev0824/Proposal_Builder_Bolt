@@ -389,16 +389,13 @@ import {
   applyItalic,
   applyUnderline,
   applyFontFamily,
-  applyFontSize,
   applyTextColor,
   applyBackgroundColor,
   applyTextAlignment,
-  applyTextAndBackgroundColor,
   directlyApplyStyle,
 } from "../../../utils/selectionManager";
 import {
   FONT_FAMILIES,
-  FontFamily,
   getFontFamilyValue as getFontFamilyValueUtil,
 } from "../../../utils/fontFamilies";
 import AdvancedColorPicker from "../AdvancedColorPicker.vue";
@@ -696,6 +693,18 @@ function updateParagraphIndent() {
 }
 
 function toggleBulletList() {
+  // Check if we have a saved selection
+  if (hasSavedSelection()) {
+    // Apply bullet list to the selected text
+    const success = applyListFormatting("bullet");
+    if (success) {
+      // Update the UI state
+      listType.value = "bullet";
+      return;
+    }
+  }
+
+  // If no selection or formatting failed, apply to the whole element
   if (listType.value === "bullet") {
     // If already a bullet list, turn it off
     listType.value = "none";
@@ -708,6 +717,18 @@ function toggleBulletList() {
 }
 
 function toggleNumberedList() {
+  // Check if we have a saved selection
+  if (hasSavedSelection()) {
+    // Apply numbered list to the selected text
+    const success = applyListFormatting("number");
+    if (success) {
+      // Update the UI state
+      listType.value = "number";
+      return;
+    }
+  }
+
+  // If no selection or formatting failed, apply to the whole element
   if (listType.value === "number") {
     // If already a numbered list, turn it off
     listType.value = "none";
@@ -716,6 +737,23 @@ function toggleNumberedList() {
     // Turn on numbered list
     listType.value = "number";
     updateElement({ listType: "number" });
+  }
+}
+
+// Apply list formatting to selected text
+function applyListFormatting(listType: "bullet" | "number" | "none"): boolean {
+  try {
+    // Create a custom style object for the list
+    const listStyle = {
+      property: "listType",
+      value: listType,
+    };
+
+    // Apply the style directly to the selected text
+    return directlyApplyStyle(listStyle.property, listStyle.value);
+  } catch (error) {
+    console.error("Error applying list formatting:", error);
+    return false;
   }
 }
 
@@ -773,7 +811,7 @@ function transformText(
       selection.addRange(newRange);
 
       // Apply the change to the element
-      directlyApplyStyle();
+      applyFontFamily(fontFamily.value.value);
     }
   } else {
     // If no selection, transform the entire text content
@@ -853,7 +891,7 @@ function clearFormatting() {
       selection.addRange(newRange);
 
       // Apply the change to the element
-      directlyApplyStyle();
+      applyTextColor(textColor.value);
     }
   } else {
     // If no selection, clear formatting for the entire element

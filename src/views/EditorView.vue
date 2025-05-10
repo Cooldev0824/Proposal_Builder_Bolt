@@ -326,6 +326,12 @@ onMounted(async () => {
   // Reset loading flag and unsaved changes flag
   isLoadingDocument.value = false;
   resetUnsavedChanges();
+
+  // Listen for the custom element selection event
+  window.document.addEventListener(
+    "element-selected-with-event",
+    elementSelectionHandler
+  );
 });
 
 function handleUndo() {
@@ -365,11 +371,52 @@ function deleteSection(index: number) {
   }
 }
 
-function selectElement(element: DocumentElement | null) {
-  selectedElement.value = element;
+// Track multiple selected elements
+const selectedElements = ref<DocumentElement[]>([]);
+
+function selectElement(element: DocumentElement | null, event?: MouseEvent) {
+  // Check if this is a multi-select operation (Shift key pressed)
+  const isMultiSelect = event?.shiftKey;
+
   if (element) {
-    activeTools.value = [element.type];
+    if (isMultiSelect) {
+      // If element is already selected, remove it from selection
+      const existingIndex = selectedElements.value.findIndex(
+        (e) => e.id === element.id
+      );
+
+      if (existingIndex >= 0) {
+        // Remove from multi-selection
+        selectedElements.value.splice(existingIndex, 1);
+
+        // Update primary selection if needed
+        if (selectedElement.value?.id === element.id) {
+          selectedElement.value =
+            selectedElements.value.length > 0
+              ? selectedElements.value[0]
+              : null;
+        }
+      } else {
+        // Add to multi-selection
+        selectedElements.value.push(element);
+
+        // Also update the primary selected element
+        selectedElement.value = element;
+      }
+    } else {
+      // Single selection - clear multi-selection
+      selectedElements.value = [element];
+      selectedElement.value = element;
+    }
+
+    // Update active tools based on the primary selection
+    if (selectedElement.value) {
+      activeTools.value = [selectedElement.value.type];
+    }
   } else {
+    // Clear all selections
+    selectedElements.value = [];
+    selectedElement.value = null;
     activeTools.value = [];
   }
 }
@@ -725,7 +772,7 @@ function addTextElement(
   const newElement: DocumentElement = {
     id: "text-" + Date.now(),
     type: "text",
-    content: "New text block",
+    content: "", // Start with empty content instead of "New text block"
     position: { x: x ?? 100, y: y ?? 100 },
     size: { width: width ?? 300, height: height ?? 100 },
     style: {
@@ -1324,6 +1371,13 @@ onMounted(() => {
   window.addEventListener("keydown", handleKeyDown);
 });
 
+// Store the element selection event handler for cleanup
+const elementSelectionHandler = ((event: CustomEvent) => {
+  const { element, originalEvent } = event.detail;
+  // Call our selectElement function with both the element and the original event
+  selectElement(element, originalEvent);
+}) as EventListener;
+
 // Clean up timers and event listeners
 onBeforeUnmount(() => {
   if (autoSaveTimer !== null) {
@@ -1331,14 +1385,95 @@ onBeforeUnmount(() => {
   }
 
   window.removeEventListener("keydown", handleKeyDown);
+  window.document.removeEventListener(
+    "element-selected-with-event",
+    elementSelectionHandler
+  );
 });
 
-// Handle keyboard shortcuts
+// Handle keyboard shortcuts and navigation
 function handleKeyDown(event: KeyboardEvent) {
+  // Skip if we're in an input field or a dialog is open
+  if (
+    event.target instanceof HTMLInputElement ||
+    event.target instanceof HTMLTextAreaElement ||
+    showTitleDialog.value ||
+    showDeleteDialog.value ||
+    showDocumentSizeDialog.value ||
+    showPreview.value
+  ) {
+    return;
+  }
+
   // Check for Ctrl+S or Cmd+S
   if ((event.ctrlKey || event.metaKey) && event.key === "s") {
     event.preventDefault(); // Prevent browser's save dialog
     saveDocument();
+    return;
+  }
+
+  // Check for Ctrl+Z or Cmd+Z (Undo)
+  if (
+    (event.ctrlKey || event.metaKey) &&
+    event.key === "z" &&
+    !event.shiftKey
+  ) {
+    event.preventDefault();
+    handleUndo();
+    return;
+  }
+
+  // Check for Ctrl+Shift+Z or Cmd+Shift+Z (Redo)
+  if ((event.ctrlKey || event.metaKey) && event.key === "z" && event.shiftKey) {
+    event.preventDefault();
+    handleRedo();
+    return;
+  }
+
+  // Check for Delete key to delete selected element
+  if (event.key === "Delete" && selectedElement.value) {
+    event.preventDefault();
+    deleteElement(selectedElement.value);
+    return;
+  }
+
+  // Arrow key navigation for selected element
+  if (
+    selectedElement.value &&
+    ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
+  ) {
+    event.preventDefault();
+
+    // Get the current position
+    const position = { ...selectedElement.value.position };
+
+    // Calculate the movement amount (use Shift for larger movements)
+    const moveAmount = event.shiftKey ? 10 : 1;
+
+    // Update position based on arrow key
+    switch (event.key) {
+      case "ArrowUp":
+        position.y -= moveAmount;
+        break;
+      case "ArrowDown":
+        position.y += moveAmount;
+        break;
+      case "ArrowLeft":
+        position.x -= moveAmount;
+        break;
+      case "ArrowRight":
+        position.x += moveAmount;
+        break;
+    }
+
+    // Update the element with the new position
+    const updatedElement = {
+      ...selectedElement.value,
+      position,
+    };
+
+    updateElement(updatedElement);
+    return;
   }
 }
 

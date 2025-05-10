@@ -1089,11 +1089,16 @@ export function applyStyleDirectly(
  */
 export function directlyApplyStyle(
   styleProperty: string,
-  value: string
+  value: string | boolean
 ): boolean {
   if (!savedRange || !savedElement) {
     console.error(`Cannot apply ${styleProperty}: No saved selection`);
     return false;
+  }
+
+  // Special handling for list formatting
+  if (styleProperty === "listType") {
+    return applyListFormatting(value as "bullet" | "number" | "none");
   }
 
   try {
@@ -1387,6 +1392,143 @@ function applyFontSizeToMultiLineSelection(
     return true;
   } catch (error) {
     console.error("Error applying font size to multi-line selection:", error);
+    return false;
+  }
+}
+
+/**
+ * Apply list formatting to the selected text
+ * This function handles applying bullet or numbered list formatting to selected text
+ */
+function applyListFormatting(listType: "bullet" | "number" | "none"): boolean {
+  if (!savedRange || !savedElement) {
+    console.error("Cannot apply list formatting: No saved selection");
+    return false;
+  }
+
+  try {
+    // Focus the element first to ensure we're working with the right context
+    savedElement.focus();
+
+    // Get the current selection
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    // Clear any existing selection
+    selection.removeAllRanges();
+
+    // Add our saved range
+    const range = savedRange.cloneRange();
+    selection.addRange(range);
+
+    // Make sure we have a valid selection
+    if (selection.rangeCount === 0 || selection.getRangeAt(0).collapsed) {
+      console.error("Invalid selection range");
+      return false;
+    }
+
+    // Get the current range
+    const currentRange = selection.getRangeAt(0);
+
+    // Clone the range to avoid modifying the original
+    const clonedRange = currentRange.cloneRange();
+
+    // Extract the selected content
+    const fragment = clonedRange.extractContents();
+
+    // Create a temporary div to hold the content
+    const tempDiv = document.createElement("div");
+    tempDiv.appendChild(fragment);
+
+    // Find all text nodes and their parent blocks in the selection
+    const textNodes = getAllTextNodesInElement(tempDiv);
+    console.log(
+      `Found ${textNodes.length} text nodes in selection for list formatting`
+    );
+
+    // Get all parent paragraph or block elements
+    const blockElements = new Set<HTMLElement>();
+    textNodes.forEach((node) => {
+      let parent = node.parentElement;
+      while (parent && parent !== tempDiv) {
+        // Check if this is a block element
+        const display = window.getComputedStyle(parent).display;
+        if (
+          display === "block" ||
+          display === "list-item" ||
+          parent.tagName === "P" ||
+          parent.tagName === "DIV" ||
+          parent.tagName === "LI"
+        ) {
+          blockElements.add(parent);
+          break;
+        }
+        parent = parent.parentElement;
+      }
+
+      // If no block parent was found, wrap the text node in a div
+      if (!parent || parent === tempDiv) {
+        const wrapper = document.createElement("div");
+        if (node.parentElement) {
+          node.parentElement.replaceChild(wrapper, node);
+          wrapper.appendChild(node);
+          blockElements.add(wrapper);
+        }
+      }
+    });
+
+    console.log(
+      `Found ${blockElements.size} block elements to format as list items`
+    );
+
+    // Apply list formatting to each block element
+    blockElements.forEach((block) => {
+      // Remove any existing list formatting
+      block.style.listStyleType = "";
+      block.style.listStylePosition = "";
+      block.style.display = "block";
+
+      // Apply new list formatting if needed
+      if (listType === "bullet") {
+        block.style.listStyleType = "disc";
+        block.style.listStylePosition = "inside";
+        block.style.display = "list-item";
+        block.style.paddingLeft = "20px";
+      } else if (listType === "number") {
+        block.style.listStyleType = "decimal";
+        block.style.listStylePosition = "inside";
+        block.style.display = "list-item";
+        block.style.paddingLeft = "20px";
+      }
+    });
+
+    // Replace the original content with the styled content
+    currentRange.deleteContents();
+
+    // Insert the styled content
+    while (tempDiv.firstChild) {
+      currentRange.insertNode(tempDiv.firstChild);
+      currentRange.collapse(false); // Move to the end of the inserted node
+    }
+
+    // Create a new range that encompasses all the modified content
+    const newRange = document.createRange();
+    newRange.setStart(currentRange.startContainer, currentRange.startOffset);
+    newRange.setEnd(currentRange.endContainer, currentRange.endOffset);
+
+    // Update the selection
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    // Update our saved range
+    savedRange = newRange.cloneRange();
+
+    console.log(
+      `Successfully applied ${listType} list formatting to selection`
+    );
+    return true;
+  } catch (error) {
+    console.error("Error applying list formatting:", error);
     return false;
   }
 }

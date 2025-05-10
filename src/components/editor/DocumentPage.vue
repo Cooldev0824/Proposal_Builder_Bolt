@@ -32,7 +32,7 @@
                   :is="getElementComponent(element.type)"
                   :element="element"
                   :isSelected="selectedElement?.id === element.id"
-                  @click.stop="selectElement(element)"
+                  @click.stop="(event) => selectElement(element, event)"
                   @update:element="updateElement"
                   ref="elementRefs"
                   :data-element-id="element.id"
@@ -281,14 +281,29 @@ function getElementComponent(type: string) {
   }
 }
 
-function selectElement(element: DocumentElement) {
+function selectElement(element: DocumentElement, event?: MouseEvent) {
   selectedElement.value = element;
   console.log("Element selected:", element.id, element.type);
 
   // Calculate the element position for the toolbar
   calculateSelectedElementPosition();
 
+  // Pass both the element and the event to the parent
   emit("element-selected", element);
+
+  // Forward the event to the parent component
+  if (event) {
+    // Create a custom event with the original event data
+    const customEvent = new CustomEvent("element-selected-with-event", {
+      detail: {
+        element,
+        originalEvent: event,
+      },
+    });
+
+    // Dispatch the event on the document
+    document.dispatchEvent(customEvent);
+  }
 }
 
 // Calculate the position of the selected element for the toolbar

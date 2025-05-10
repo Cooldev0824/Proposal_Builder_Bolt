@@ -59,10 +59,19 @@ const isEditing = ref(false);
 let observer: MutationObserver | null = null;
 let isUpdating = false;
 
-// Cursor position tracking
-let cursorPosition = {
-  node: null as Node | null,
+// Cursor position tracking with enhanced data
+let cursorPosition: {
+  node: Node | null;
+  offset: number;
+  path?: number[] | null;
+  textBefore?: string;
+  textAfter?: string;
+} = {
+  node: null,
   offset: 0,
+  path: null,
+  textBefore: "",
+  textAfter: "",
 };
 
 // Drag & drop functionality
@@ -182,7 +191,9 @@ watch(
       contentElement.value.innerHTML = newContent || "";
 
       // Re-enable the observer
-      setupMutationObserver();
+      if (contentElement.value) {
+        setupMutationObserver();
+      }
     }
   }
 );
@@ -201,10 +212,37 @@ function saveCursorPosition() {
   if (!contentElement.value.contains(range.commonAncestorContainer))
     return false;
 
+  // Get the path to the node for more reliable restoration
+  const nodePath = getNodePath(range.endContainer);
+
+  // Store cursor position information with enhanced data
   cursorPosition = {
     node: range.endContainer,
     offset: range.endOffset,
+    path: nodePath,
+    textBefore: "",
+    textAfter: "",
   };
+
+  // Also store text before and after cursor for text-based restoration
+  try {
+    // Create a range from the start of the content to the cursor
+    const beforeRange = document.createRange();
+    beforeRange.setStart(contentElement.value, 0);
+    beforeRange.setEnd(range.endContainer, range.endOffset);
+    cursorPosition.textBefore = beforeRange.toString();
+
+    // Create a range from the cursor to the end of the content
+    const afterRange = document.createRange();
+    afterRange.setStart(range.endContainer, range.endOffset);
+    afterRange.setEnd(
+      contentElement.value,
+      contentElement.value.childNodes.length
+    );
+    cursorPosition.textAfter = afterRange.toString();
+  } catch (error) {
+    console.error("Error saving cursor position text context:", error);
+  }
 
   return true;
 }
@@ -319,14 +357,29 @@ function handleTextChange(event: Event) {
     // Error getting text around cursor
   }
 
-  // Update the element content
-  const updatedElement = {
-    ...props.element,
-    content: contentElement.value.innerHTML,
-  };
+  // Get the current content
+  const currentContent = contentElement.value.innerHTML;
 
-  isUpdating = true;
-  emit("update:element", updatedElement);
+  // Only update if the content has actually changed
+  if (currentContent !== props.element.content) {
+    // Update the element content
+    const updatedElement = {
+      ...props.element,
+      content: currentContent,
+    };
+
+    isUpdating = true;
+    emit("update:element", updatedElement);
+
+    // Reset the updating flag after a short delay
+    setTimeout(() => {
+      isUpdating = false;
+    }, 10);
+
+    return;
+  }
+
+  // If we reach here, the content hasn't changed, so we don't need to update
 
   // Restore cursor position after Vue updates the DOM
   setTimeout(() => {
@@ -1097,6 +1150,15 @@ onMounted(() => {
     // Set initial content
     contentElement.value.innerHTML = props.element.content || "";
 
+    // If the element is selected and empty, focus it to allow immediate typing
+    if (props.isSelected && !props.element.content) {
+      setTimeout(() => {
+        if (contentElement.value) {
+          contentElement.value.focus();
+        }
+      }, 100);
+    }
+
     // Ensure the element has proper attributes for editing
     contentElement.value.setAttribute("contenteditable", "true");
     contentElement.value.setAttribute("spellcheck", "false"); // Disable spell checking to avoid browser interference
@@ -1196,8 +1258,10 @@ onBeforeUnmount(() => {
 
     /* Ensure empty lines are visible */
     &:empty::after {
-      content: "\00a0"; /* Non-breaking space */
+      content: "Click to add text"; /* Placeholder text */
       display: inline;
+      color: #aaa; /* Light gray color */
+      font-style: italic;
     }
 
     /* Fix for cursor positioning on Enter key press */
