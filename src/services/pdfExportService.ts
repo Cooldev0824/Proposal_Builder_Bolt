@@ -110,6 +110,20 @@ export async function exportToPdf(
         // Force SVG to be visible during capture
         svg.style.display = "block";
         svg.style.visibility = "visible";
+
+        // Ensure all SVG child elements have proper attributes
+        const polygons = svg.querySelectorAll("polygon");
+        polygons.forEach((polygon) => {
+          if (!polygon.getAttribute("fill")) {
+            polygon.setAttribute("fill", "#E2E8F0");
+          }
+          if (!polygon.getAttribute("stroke")) {
+            polygon.setAttribute("stroke", "#CBD5E1");
+          }
+          if (!polygon.getAttribute("stroke-width")) {
+            polygon.setAttribute("stroke-width", "1");
+          }
+        });
       });
 
       // Render the page to canvas with settings that match the preview
@@ -141,6 +155,21 @@ export async function exportToPdf(
             // Make sure SVG is visible
             svg.style.display = "block";
             svg.style.visibility = "visible";
+
+            // Process polygon elements (triangles)
+            const polygons = svg.querySelectorAll("polygon");
+            polygons.forEach((polygon) => {
+              // Ensure polygon has proper attributes
+              if (!polygon.getAttribute("fill")) {
+                polygon.setAttribute("fill", "#E2E8F0");
+              }
+              if (!polygon.getAttribute("stroke")) {
+                polygon.setAttribute("stroke", "#CBD5E1");
+              }
+              if (!polygon.getAttribute("stroke-width")) {
+                polygon.setAttribute("stroke-width", "1");
+              }
+            });
           });
 
           // Make sure all elements are visible
@@ -149,6 +178,20 @@ export async function exportToPdf(
             if (el instanceof HTMLElement) {
               el.style.visibility = "visible";
               el.style.display = "block";
+            }
+          });
+
+          // Find shape elements that are triangles and ensure they're properly rendered
+          const shapeElements = clonedDoc.querySelectorAll(".shape-element");
+          shapeElements.forEach((element) => {
+            if (element instanceof HTMLElement) {
+              // Check if this is a triangle by looking for polygon elements
+              const polygon = element.querySelector("polygon");
+              if (polygon) {
+                // Make sure the container is transparent
+                element.style.backgroundColor = "transparent";
+                element.style.border = "none";
+              }
             }
           });
         },
@@ -385,6 +428,35 @@ function processPageForExport(
     // Make sure SVG is visible
     svg.style.display = "block";
     svg.style.visibility = "visible";
+
+    // Process polygon elements (triangles)
+    const polygons = svg.querySelectorAll("polygon");
+    polygons.forEach((polygon) => {
+      // Ensure polygon has proper attributes
+      if (!polygon.getAttribute("fill")) {
+        polygon.setAttribute("fill", "#E2E8F0");
+      }
+      if (!polygon.getAttribute("stroke")) {
+        polygon.setAttribute("stroke", "#CBD5E1");
+      }
+      if (!polygon.getAttribute("stroke-width")) {
+        polygon.setAttribute("stroke-width", "1");
+      }
+    });
+  });
+
+  // Find shape elements that are triangles and ensure they're properly rendered
+  const shapeElements = pageElement.querySelectorAll(".shape-element");
+  shapeElements.forEach((element) => {
+    if (element instanceof HTMLElement) {
+      // Check if this is a triangle by looking for polygon elements
+      const polygon = element.querySelector("polygon");
+      if (polygon) {
+        // Make sure the container is transparent
+        element.style.backgroundColor = "transparent";
+        element.style.border = "none";
+      }
+    }
   });
 }
 
@@ -483,13 +555,55 @@ export async function directExportToPdf(
           img.style.objectFit = "contain";
           elementDiv.appendChild(img);
         } else if (element.type === "shape") {
-          // Simple representation of shapes
-          elementDiv.style.backgroundColor = element.style?.fill || "#E2E8F0";
-          elementDiv.style.border = `${
-            element.style?.strokeWidth || 1
-          }px solid ${element.style?.stroke || "#CBD5E1"}`;
+          // Handle different shape types
           if (element.content === "circle") {
+            // For circles, use border-radius
+            elementDiv.style.backgroundColor = element.style?.fill || "#E2E8F0";
+            elementDiv.style.border = `${
+              element.style?.strokeWidth || 1
+            }px solid ${element.style?.stroke || "#CBD5E1"}`;
             elementDiv.style.borderRadius = "50%";
+          } else if (element.content === "triangle") {
+            // For triangles, use SVG
+            const svg = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "svg"
+            );
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            svg.style.position = "absolute";
+            svg.style.top = "0";
+            svg.style.left = "0";
+
+            const polygon = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "polygon"
+            );
+            const width = element.size.width;
+            const height = element.size.height;
+
+            // Define triangle points (centered triangle pointing down)
+            const points = `${width / 2},0 ${width},${height} 0,${height}`;
+            polygon.setAttribute("points", points);
+            polygon.setAttribute("fill", element.style?.fill || "#E2E8F0");
+            polygon.setAttribute("stroke", element.style?.stroke || "#CBD5E1");
+            polygon.setAttribute(
+              "stroke-width",
+              `${element.style?.strokeWidth || 1}`
+            );
+
+            svg.appendChild(polygon);
+            elementDiv.appendChild(svg);
+
+            // Clear background so only the SVG shows
+            elementDiv.style.backgroundColor = "transparent";
+            elementDiv.style.border = "none";
+          } else {
+            // Default rectangle handling
+            elementDiv.style.backgroundColor = element.style?.fill || "#E2E8F0";
+            elementDiv.style.border = `${
+              element.style?.strokeWidth || 1
+            }px solid ${element.style?.stroke || "#CBD5E1"}`;
           }
         }
 
