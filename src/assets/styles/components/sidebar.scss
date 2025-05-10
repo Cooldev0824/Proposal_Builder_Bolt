@@ -1,0 +1,121 @@
+@import '../variables';
+@import '../mixins';
+
+.sidebar-navigation {
+  width: 240px;
+  background-color: $background;
+  border-right: 1px solid $border;
+  overflow-y: auto;
+  @include flex-column;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba($text-disabled, 0.1);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba($text-disabled, 0.3);
+    border-radius: 3px;
+    
+    &:hover {
+      background: rgba($text-disabled, 0.5);
+    }
+  }
+  
+  .sidebar-header {
+    padding: $spacing-md;
+    border-bottom: 1px solid $border;
+    
+    .sidebar-title {
+      font-size: $font-size-md;
+      font-weight: 600;
+      margin: 0;
+    }
+  }
+  
+  .sidebar-content {
+    flex: 1;
+    padding: $spacing-sm;
+  }
+  
+  .sidebar-footer {
+    padding: $spacing-sm;
+    border-top: 1px solid $border;
+    display: flex;
+    justify-content: center;
+  }
+}
+
+.section-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  
+  .section-item {
+    margin-bottom: $spacing-xs;
+    
+    .section-button {
+      @include button-reset;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: $spacing-sm;
+      border-radius: $border-radius-sm;
+      @include transition-fast;
+      
+      &:hover {
+        background-color: rgba($primary, 0.05);
+      }
+      
+      &.active {
+        background-color: rgba($primary, 0.1);
+        color: $primary;
+        font-weight: 500;
+      }
+      
+      .section-icon {
+        margin-right: $spacing-sm;
+        color: $text-secondary;
+      }
+      
+      .section-title {
+        @include truncate;
+        flex: 1;
+      }
+      
+      .section-actions {
+        opacity: 0;
+        @include transition-fast;
+      }
+      
+      &:hover .section-actions {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.add-section-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: $spacing-sm;
+  margin-top: $spacing-sm;
+  border: 1px dashed $border;
+  border-radius: $border-radius-sm;
+  color: $text-secondary;
+  @include transition-fast;
+  
+  &:hover {
+    background-color: rgba($primary, 0.05);
+    color: $primary;
+  }
+  
+  .v-icon {
+    margin-right: $spacing-xs;
+  }
+}

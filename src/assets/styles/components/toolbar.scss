@@ -1,0 +1,79 @@
+@import '../variables';
+@import '../mixins';
+
+.editor-toolbar {
+  @include flex-between;
+  padding: $spacing-sm $spacing-md;
+  background-color: $background;
+  border-bottom: 1px solid $border;
+  z-index: $z-index-sticky;
+  
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    
+    &.text-formatting {
+      gap: $spacing-sm;
+    }
+  }
+  
+  .toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background-color: $border;
+    margin: 0 $spacing-md;
+  }
+  
+  .document-title {
+    font-size: $font-size-md;
+    font-weight: 500;
+    margin-left: $spacing-md;
+    color: $text-primary;
+    @include truncate;
+    max-width: 300px;
+  }
+  
+  .font-select {
+    width: 140px;
+  }
+  
+  .document-size-btn {
+    min-width: 150px;
+  }
+  
+  .save-status {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-left: $spacing-sm;
+    font-size: $font-size-sm;
+    
+    .text-success {
+      color: $success;
+    }
+    
+    .text-error {
+      color: $error;
+    }
+  }
+  
+  @include respond-to(lg) {
+    .toolbar-group {
+      &.text-formatting {
+        .font-select {
+          width: 120px;
+        }
+      }
+    }
+  }
+  
+  @include respond-to(md) {
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    
+    .toolbar-divider {
+      display: none;
+    }
+  }
+}

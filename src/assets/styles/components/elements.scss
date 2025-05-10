@@ -1,0 +1,147 @@
+@import '../variables';
+@import '../mixins';
+
+// Base element styles
+.element {
+  position: absolute;
+  user-select: none;
+  
+  &:hover {
+    outline: 1px dashed rgba($primary, 0.5);
+  }
+  
+  &.selected {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+  }
+  
+  &.editing-active {
+    outline: 2px solid $secondary;
+    outline-offset: 2px;
+  }
+}
+
+// Text element
+.text-element {
+  .text-content {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    
+    &[contenteditable="true"] {
+      cursor: text;
+      user-select: text;
+      outline: none;
+      
+      &:focus {
+        outline: none;
+      }
+    }
+  }
+}
+
+// Image element
+.image-element {
+  .image-container {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+  }
+  
+  .image-placeholder {
+    width: 100%;
+    height: 100%;
+    background-color: rgba($text-disabled, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    .v-icon {
+      font-size: 48px;
+      color: $text-disabled;
+      margin-bottom: $spacing-sm;
+    }
+    
+    .placeholder-text {
+      font-size: $font-size-sm;
+      color: $text-secondary;
+    }
+  }
+}
+
+// Shape element
+.shape-element {
+  .shape-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+// Table element
+.table-element {
+  .table-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
+  
+  .editor-table {
+    width: 100%;
+    border-collapse: collapse;
+    
+    th, td {
+      border: 1px solid $border;
+      padding: $spacing-xs;
+      min-width: 60px;
+      
+      &.selected-cell {
+        background-color: rgba($primary, 0.1);
+      }
+      
+      &.active-cell {
+        background-color: rgba($primary, 0.2);
+      }
+    }
+    
+    .cell-content {
+      min-height: 20px;
+    }
+    
+    .cell-editor {
+      .editable-content {
+        outline: none;
+        min-height: 20px;
+      }
+    }
+  }
+  
+  .table-toolbar {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background-color: $background;
+    border-radius: $border-radius-sm;
+    box-shadow: $shadow;
+    display: flex;
+    padding: $spacing-xs;
+    z-index: $z-index-tooltip;
+  }
+}

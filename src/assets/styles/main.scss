@@ -1,124 +1,44 @@
-:root {
-  --primary: #0c84fe;
-  --primary-rgb: 12, 132, 254; /* RGB values for primary color */
-  --secondary: #05c2c9;
-  --accent: #8a8d93;
-  --success: #36b37e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --background: #ffffff;
-  --surface: #f5f7fa;
-  --text-primary: #1e1e1e;
-  --text-secondary: #6e7275;
-  --text-disabled: #adb5bd;
-  --border: #e2e8f0;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+// Import variables and mixins
+@import './variables';
+@import './mixins';
+
+// Reset and base styles
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
 body {
-  margin: 0;
-  padding: 0;
-  font-family: "Roboto", sans-serif;
+  font-family: $font-family-base;
+  font-size: $font-size-md;
+  line-height: 1.5;
+  color: $text-primary;
+  background-color: $surface;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: var(--text-primary);
-  background-color: var(--surface);
 }
 
-.document-editor {
-  height: 100vh;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--surface);
-}
-
-.editor-container {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-.page {
-  background-color: var(--background);
-  box-shadow: var(--shadow-md);
-  margin: 16px auto;
-  transition: transform 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-  }
-}
-
-.sidebar {
-  background-color: var(--background);
-  border-right: 1px solid var(--border);
-  height: 100%;
-  overflow-y: auto;
-  width: 250px;
-  transition: width 0.3s ease;
-
-  &.collapsed {
-    width: 60px;
-  }
-}
-
-.section-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-
-  &:hover {
-    background-color: rgba(12, 132, 254, 0.05);
-  }
-
-  &.active {
-    background-color: rgba(12, 132, 254, 0.1);
-    border-left: 3px solid var(--primary);
-  }
-}
-
-.toolbar {
-  background-color: var(--background);
-  border-bottom: 1px solid var(--border);
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-
-  .tool-button {
-    margin: 0 4px;
-    border-radius: 4px;
-    padding: 6px;
-    color: var(--text-secondary);
-    transition: all 0.15s ease;
-
-    &:hover {
-      background-color: var(--surface);
-      color: var(--primary);
-    }
-
-    &.active {
-      background-color: var(--primary);
-      color: white;
-    }
-  }
-}
-
-.properties-panel {
-  background-color: var(--background);
-  border-left: 1px solid var(--border);
-  width: 280px;
-  padding: 16px;
-  overflow-y: auto;
+// CSS Variables for use in components
+:root {
+  --primary: #{$primary};
+  --primary-rgb: #{$primary-rgb};
+  --secondary: #{$secondary};
+  --accent: #{$accent};
+  --success: #{$success};
+  --warning: #{$warning};
+  --error: #{$error};
+  --background: #{$background};
+  --surface: #{$surface};
+  --text-primary: #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --text-disabled: #{$text-disabled};
+  --border: #{$border};
+  --shadow-sm: #{$shadow-sm};
+  --shadow: #{$shadow};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
 }
 
 // Animation classes
@@ -143,35 +63,5 @@ body {
   opacity: 0;
 }
 
-// Responsive adjustments
-@media (max-width: 1200px) {
-  .properties-panel {
-    width: 240px;
-  }
-}
-
-@media (max-width: 900px) {
-  .sidebar {
-    width: 200px;
-
-    &.collapsed {
-      width: 0;
-      padding: 0;
-    }
-  }
-}
-
-@media (max-width: 768px) {
-  .editor-container {
-    flex-direction: column;
-  }
-
-  .sidebar,
-  .properties-panel {
-    width: 100%;
-    max-height: 200px;
-    border-right: none;
-    border-left: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
+// Import component styles
+@import './components/index';

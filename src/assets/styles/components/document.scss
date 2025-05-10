@@ -1,0 +1,78 @@
+@import '../variables';
+@import '../mixins';
+
+.document-page-container {
+  position: relative;
+  margin: $spacing-md auto;
+}
+
+.document-page {
+  background-color: $background;
+  box-shadow: $shadow-md;
+  transition: transform 0.2s ease;
+  position: relative;
+  
+  &.active {
+    transform: translateY(-2px);
+    box-shadow: $shadow-lg;
+  }
+}
+
+.page-content {
+  position: relative;
+  height: 100%;
+  background-color: white;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.elements-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.element-wrapper {
+  position: relative;
+}
+
+// Page title and section header
+.page-header {
+  padding: $spacing-md;
+  border-bottom: 1px solid $border;
+  
+  .page-title {
+    font-size: $font-size-lg;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  .page-subtitle {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    margin: $spacing-xs 0 0;
+  }
+}
+
+// Page footer
+.page-footer {
+  padding: $spacing-md;
+  border-top: 1px solid $border;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  display: flex;
+  justify-content: space-between;
+}
+
+// Page numbers
+.page-number {
+  position: absolute;
+  bottom: $spacing-sm;
+  right: $spacing-sm;
+  font-size: $font-size-xs;
+  color: $text-secondary;
+  padding: $spacing-xs $spacing-sm;
+  background-color: rgba($background, 0.8);
+  border-radius: $border-radius-sm;
+}

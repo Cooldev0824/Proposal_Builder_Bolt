@@ -1,9 +1,10 @@
 <template>
-  <div
-    class="text-element element"
-    :class="{ selected: isSelected }"
-    :style="elementStyle"
-    @mousedown.stop="startDrag"
+  <BaseElement
+    :element="element"
+    :isSelected="isSelected"
+    :resizable="true"
+    @update:element="handleElementUpdate"
+    @click="handleElementClick"
   >
     <div
       class="element-content"
@@ -17,18 +18,9 @@
       @keyup="handleKeyUp"
       :style="textStyle"
       ref="contentElement"
-      :data-element-id="props.element.id"
+      :data-element-id="element.id"
     ></div>
-    <ResizeHandles
-      v-if="isSelected"
-      :elementSize="props.element.size"
-      :elementPosition="props.element.position"
-      :minWidth="50"
-      :minHeight="30"
-      :gridSize="10"
-      @resize="handleResize"
-    />
-  </div>
+  </BaseElement>
 </template>
 
 <script setup lang="ts">
@@ -42,7 +34,7 @@ import {
 } from "vue";
 import { DocumentElement, Size, Position } from "../../../types/document";
 import { saveSelection } from "../../../utils/selectionManager";
-import ResizeHandles from "../../editor/ResizeHandles.vue";
+import BaseElement from "./BaseElement.vue";
 import { getFontFamilyValue } from "../../../utils/fontFamilies";
 
 const props = defineProps<{
@@ -74,36 +66,14 @@ let cursorPosition: {
   textAfter: "",
 };
 
-// Drag & drop functionality
-let isDragging = false;
-let startX = 0;
-let startY = 0;
-let startLeft = 0;
-let startTop = 0;
+// New methods for BaseElement integration
+function handleElementUpdate(updatedElement: DocumentElement) {
+  emit("update:element", updatedElement);
+}
 
-// Resize functionality
-let isResizing = false;
-let startWidth = 0;
-let startHeight = 0;
-
-const elementStyle = computed(() => {
-  return {
-    left: `${props.element.position.x}px`,
-    top: `${props.element.position.y}px`,
-    width: `${props.element.size.width}px`,
-    minHeight: `${props.element.size.height}px`,
-    backgroundColor: props.element.style?.blockBackground
-      ? props.element.style?.blockBackgroundColor || "#f5f5f5"
-      : "transparent",
-    padding: "8px",
-    borderRadius: "4px",
-    border: props.isSelected
-      ? "2px solid var(--primary)"
-      : "2px solid transparent",
-    cursor: isEditing.value ? "text" : "move",
-    zIndex: props.element.zIndex ?? 0,
-  };
-});
+function handleElementClick(event: MouseEvent) {
+  // This is handled by the parent component
+}
 
 const textStyle = computed(() => {
   const style = props.element.style || {};
@@ -993,106 +963,7 @@ function applyStyleToSelectedText(
 
 // No longer needed - using direct text selection utility instead
 
-function startDrag(event: MouseEvent) {
-  if (isEditing.value || event.target === contentElement.value) return;
-
-  isDragging = true;
-  startX = event.clientX;
-  startY = event.clientY;
-  startLeft = props.element.position.x;
-  startTop = props.element.position.y;
-
-  document.addEventListener("mousemove", onDrag);
-  document.addEventListener("mouseup", stopDrag);
-}
-
-function onDrag(event: MouseEvent) {
-  if (!isDragging) return;
-
-  const deltaX = event.clientX - startX;
-  const deltaY = event.clientY - startY;
-
-  // Calculate new position
-  let newX = startLeft + deltaX;
-  let newY = startTop + deltaY;
-
-  // Snap to grid (10px grid)
-  const gridSize = 10;
-  newX = Math.round(newX / gridSize) * gridSize;
-  newY = Math.round(newY / gridSize) * gridSize;
-
-  const updatedElement = {
-    ...props.element,
-    position: {
-      x: newX,
-      y: newY,
-    },
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function stopDrag() {
-  isDragging = false;
-  document.removeEventListener("mousemove", onDrag);
-  document.removeEventListener("mouseup", stopDrag);
-}
-
-// Handle resize from ResizeHandles component
-function handleResize(newSize: Size, newPosition: Position) {
-  const updatedElement = {
-    ...props.element,
-    size: newSize,
-    position: newPosition,
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function startResize(event: MouseEvent) {
-  isResizing = true;
-  startX = event.clientX;
-  startY = event.clientY;
-  startWidth = props.element.size.width;
-  startHeight = props.element.size.height;
-
-  document.addEventListener("mousemove", onResize);
-  document.addEventListener("mouseup", stopResize);
-}
-
-function onResize(event: MouseEvent) {
-  if (!isResizing) return;
-
-  const deltaX = event.clientX - startX;
-  const deltaY = event.clientY - startY;
-
-  // Calculate new size
-  let newWidth = Math.max(100, startWidth + deltaX);
-  let newHeight = Math.max(50, startHeight + deltaY);
-
-  // Snap to grid (10px grid)
-  const gridSize = 10;
-  newWidth = Math.round(newWidth / gridSize) * gridSize;
-  newHeight = Math.round(newHeight / gridSize) * gridSize;
-
-  const newSize = {
-    width: newWidth,
-    height: newHeight,
-  };
-
-  const updatedElement = {
-    ...props.element,
-    size: newSize,
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function stopResize() {
-  isResizing = false;
-  document.removeEventListener("mousemove", onResize);
-  document.removeEventListener("mouseup", stopResize);
-}
+// Drag and resize functionality is now handled by the BaseElement component
 
 // Set up mutation observer to track DOM changes
 function setupMutationObserver() {
@@ -1219,175 +1090,90 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.element {
-  position: absolute;
-  user-select: none;
+.element-content {
+  width: 100%;
+  height: 100%;
+  outline: none !important;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  caret-color: black;
+  -webkit-user-select: text;
+  user-select: text;
+  position: relative;
+  cursor: text;
 
-  &.selected {
-    outline: none;
-  }
-}
-
-.text-element {
-  overflow: hidden;
-
-  .element-content {
-    width: 100%;
-    height: 100%;
+  &:focus {
     outline: none !important;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
-    caret-color: black; /* Ensure the caret is visible with high contrast */
-
-    /* Ensure proper cursor positioning */
-    &:focus {
-      outline: none !important;
-      box-shadow: none !important;
-    }
-
-    /* Fix for cursor position after line break */
-    br {
-      display: block;
-      content: "";
-      margin-top: 0;
-      line-height: inherit;
-      min-height: 1.5em; /* Ensure line breaks have consistent height */
-      user-select: none; /* Prevent selection of line breaks */
-    }
-
-    /* Ensure empty lines are visible */
-    &:empty::after {
-      content: "Click to add text"; /* Placeholder text */
-      display: inline;
-      color: #aaa; /* Light gray color */
-      font-style: italic;
-    }
-
-    /* Fix for cursor positioning on Enter key press */
-    &[contenteditable] {
-      -webkit-user-select: text;
-      user-select: text;
-      position: relative;
-      cursor: text;
-    }
-
-    /* Improve text selection visibility */
-    &::selection {
-      background-color: rgba(0, 123, 255, 0.3) !important;
-      color: inherit !important;
-    }
-
-    *::selection {
-      background-color: rgba(0, 123, 255, 0.3) !important;
-      color: inherit !important;
-    }
-
-    /* Ensure spans created by text formatting are properly styled */
-    span {
-      display: inline;
-      vertical-align: baseline;
-      line-height: normal; /* Prevent line height issues with font size changes */
-    }
-
-    /* Ensure font size spans are displayed correctly */
-    span[style*="font-size"] {
-      display: inline;
-      vertical-align: baseline;
-      line-height: normal;
-    }
-
-    /* Ensure proper cursor positioning in empty elements */
-    &:empty {
-      min-height: 1em;
-      display: block;
-    }
-
-    /* Ensure proper cursor positioning with different font sizes */
-    span,
-    p,
-    div,
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-      min-height: 1em;
-      caret-color: black;
-    }
-
-    /* Style heading elements */
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-      margin: 0;
-      padding: 0;
-      display: block;
-      line-height: 1.2;
-      font-family: inherit;
-    }
-
-    /* Specific heading styles */
-    h1 {
-      font-size: 32px;
-      font-weight: bold;
-      margin-bottom: 16px;
-      color: #333;
-    }
-
-    h2 {
-      font-size: 28px;
-      font-weight: bold;
-      margin-bottom: 14px;
-      color: #444;
-    }
-
-    h3 {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 12px;
-      color: #555;
-    }
-
-    h4 {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-
-    h5 {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-
-    h6 {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-
-    /* Handle zero-width spaces used for cursor positioning */
-    &:after br {
-      content: "";
-      white-space: pre;
-    }
+    box-shadow: none !important;
   }
-}
 
-.resize-handle {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background-color: var(--primary);
-  bottom: 0;
-  right: 0;
-  cursor: nwse-resize;
-  z-index: 1;
-  border-radius: 2px;
+  /* Fix for cursor position after line break */
+  br {
+    display: block;
+    content: "";
+    margin-top: 0;
+    line-height: inherit;
+    min-height: 1.5em;
+    user-select: none;
+  }
+
+  /* Ensure empty lines are visible */
+  &:empty::after {
+    content: "Click to add text";
+    display: inline;
+    color: #aaa;
+    font-style: italic;
+  }
+
+  /* Improve text selection visibility */
+  &::selection {
+    background-color: rgba(0, 123, 255, 0.3) !important;
+    color: inherit !important;
+  }
+
+  *::selection {
+    background-color: rgba(0, 123, 255, 0.3) !important;
+    color: inherit !important;
+  }
+
+  /* Ensure proper cursor positioning in empty elements */
+  &:empty {
+    min-height: 1em;
+    display: block;
+  }
+
+  /* Style heading elements */
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    padding: 0;
+    display: block;
+    line-height: 1.2;
+    font-family: inherit;
+    min-height: 1em;
+    caret-color: black;
+  }
+
+  /* Specific heading styles */
+  h1 {
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    color: #333;
+  }
+
+  h2 {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 14px;
+    color: #444;
+  }
+
+  h3 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #555;
+  }
 }
 </style>

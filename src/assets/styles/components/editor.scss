@@ -1,0 +1,137 @@
+@import '../variables';
+@import '../mixins';
+
+.document-editor {
+  @include flex-column;
+  height: 100vh;
+  background-color: $surface;
+}
+
+.editor-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.main-editor {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background-color: $surface;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba($text-disabled, 0.1);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba($text-disabled, 0.3);
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgba($text-disabled, 0.5);
+    }
+  }
+}
+
+.editor-content {
+  padding: $spacing-lg;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.right-panel {
+  width: 300px;
+  background-color: $background;
+  border-left: 1px solid $border;
+  overflow-y: auto;
+  
+  .tab-content {
+    padding: $spacing-md;
+  }
+}
+
+// Element selection and manipulation
+.element {
+  position: relative;
+  
+  &.selected {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+    
+    .resize-handle {
+      display: block;
+    }
+  }
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  width: 12px;
+  height: 12px;
+  background-color: $primary;
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: nwse-resize;
+  display: none;
+}
+
+// Drawing rectangle for element creation
+.drawing-rectangle {
+  position: absolute;
+  border: 2px dashed $primary;
+  background-color: rgba($primary-rgb, 0.1);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+// Element toolbar
+.element-toolbar {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background-color: $background;
+  border-radius: $border-radius-sm;
+  box-shadow: $shadow;
+  display: flex;
+  align-items: center;
+  padding: $spacing-xs $spacing-sm;
+  z-index: $z-index-tooltip;
+  
+  .toolbar-section {
+    display: flex;
+    align-items: center;
+    
+    &:not(:last-child) {
+      margin-right: $spacing-sm;
+    }
+  }
+  
+  .toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background-color: $border;
+    margin: 0 $spacing-sm;
+  }
+  
+  .element-type {
+    font-size: $font-size-sm;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+  }
+  
+  .layer-number {
+    font-size: $font-size-xs;
+    color: $text-secondary;
+    margin-left: $spacing-xs;
+  }
+}

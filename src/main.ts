@@ -20,12 +20,9 @@ import "./assets/styles/main.scss";
 // Initialize selection tracking
 import { initSelectionTracking } from "./utils/selectionManager";
 
-// Load Google Fonts
-const googleFontsLink = document.createElement("link");
-googleFontsLink.rel = "stylesheet";
-googleFontsLink.href =
-  "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Nunito:wght@300;400;600;700&family=Merriweather:wght@300;400;700&family=Playfair+Display:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=EB+Garamond:wght@400;500;600;700&family=Roboto+Mono:wght@300;400;500;700&family=Source+Code+Pro:wght@300;400;500;700&family=Fira+Code:wght@300;400;500;700&family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700&family=Archivo+Black&family=Anton&family=Dancing+Script:wght@400;500;600;700&family=Pacifico&family=Caveat:wght@400;500;600;700&family=Satisfy&display=swap";
-document.head.appendChild(googleFontsLink);
+// Load Google Fonts using the font loader utility
+import { loadGoogleFonts } from "./utils/fontLoader";
+loadGoogleFonts();
 
 const vuetify = createVuetify({
   components,
@@ -64,4 +61,20 @@ const pinia = createPinia();
 // Initialize selection tracking
 initSelectionTracking();
 
-createApp(App).use(router).use(vuetify).use(pinia).mount("#app");
+// Import common components
+import { registerUIComponents } from "./components/common/ui";
+import { registerLayoutComponents } from "./components/common/layout";
+import { registerElementComponents } from "./components/common/elements";
+
+const app = createApp(App);
+
+// Register common components
+registerUIComponents(app);
+registerLayoutComponents(app);
+registerElementComponents(app);
+
+// Use plugins
+app.use(router).use(vuetify).use(pinia);
+
+// Mount the app
+app.mount("#app");
