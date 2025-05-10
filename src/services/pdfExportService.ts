@@ -133,7 +133,7 @@ export async function exportToPdf(
         allowTaint: true,
         logging: false,
         backgroundColor: mergedOptions.includeBackground ? "white" : null,
-        imageTimeout: 0,
+        imageTimeout: 0, // No timeout for images
         width: paperSize.width,
         height: paperSize.height,
         x: 0,
@@ -179,6 +179,16 @@ export async function exportToPdf(
               el.style.visibility = "visible";
               el.style.display = "block";
             }
+          });
+
+          // Process images to ensure they render correctly
+          const images = clonedDoc.querySelectorAll("img");
+          images.forEach((img) => {
+            img.crossOrigin = "anonymous";
+
+            // Make sure images are visible
+            img.style.display = "block";
+            img.style.visibility = "visible";
           });
 
           // Process text elements to ensure styles are applied correctly
@@ -406,6 +416,18 @@ async function exportSinglePage(
       windowWidth: pdfWidth + 50,
       windowHeight: pdfHeight + 50,
       foreignObjectRendering: false,
+      imageTimeout: 0, // No timeout for images
+      onclone: (clonedDoc) => {
+        // Process images to ensure they render correctly
+        const images = clonedDoc.querySelectorAll("img");
+        images.forEach((img) => {
+          img.crossOrigin = "anonymous";
+
+          // Make sure images are visible
+          img.style.display = "block";
+          img.style.visibility = "visible";
+        });
+      },
       ignoreElements: (element) => {
         // Ignore UI controls
         return (
@@ -735,8 +757,40 @@ export async function directExportToPdf(
           img.src = element.content;
           img.style.width = "100%";
           img.style.height = "100%";
-          img.style.objectFit = "contain";
-          elementDiv.appendChild(img);
+          img.style.objectFit = element.style?.objectFit || "contain";
+          img.crossOrigin = "anonymous"; // Add CORS support
+
+          // Apply additional image styles from the element
+          if (element.style?.borderRadius) {
+            img.style.borderRadius = `${element.style.borderRadius}px`;
+          }
+
+          // Create a container for the image to handle background color and borders
+          const imgContainer = document.createElement("div");
+          imgContainer.style.width = "100%";
+          imgContainer.style.height = "100%";
+          imgContainer.style.overflow = "hidden";
+
+          // Apply background color if specified
+          if (element.style?.backgroundColor) {
+            imgContainer.style.backgroundColor = element.style.backgroundColor;
+          }
+
+          // Apply border if specified
+          if (element.style?.borderWidth) {
+            imgContainer.style.border = `${element.style.borderWidth}px solid ${
+              element.style.borderColor || "#000000"
+            }`;
+            imgContainer.style.boxSizing = "border-box";
+          }
+
+          // Apply border radius if specified
+          if (element.style?.borderRadius) {
+            imgContainer.style.borderRadius = `${element.style.borderRadius}px`;
+          }
+
+          imgContainer.appendChild(img);
+          elementDiv.appendChild(imgContainer);
         } else if (element.type === "shape") {
           // Handle different shape types
           if (element.content === "circle") {
@@ -788,6 +842,32 @@ export async function directExportToPdf(
               element.style?.strokeWidth || 1
             }px solid ${element.style?.stroke || "#CBD5E1"}`;
           }
+        } else if (element.type === "signature") {
+          if (element.content) {
+            const img = document.createElement("img");
+            img.src = element.content;
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "contain";
+            img.crossOrigin = "anonymous"; // Add CORS support
+
+            // Create a container for the signature to handle background color
+            const signatureContainer = document.createElement("div");
+            signatureContainer.style.width = "100%";
+            signatureContainer.style.height = "100%";
+            signatureContainer.style.overflow = "hidden";
+
+            // Apply background color if specified
+            if (element.style?.backgroundColor) {
+              signatureContainer.style.backgroundColor =
+                element.style.backgroundColor;
+            }
+
+            signatureContainer.appendChild(img);
+            elementDiv.appendChild(signatureContainer);
+          } else {
+            elementDiv.style.border = "1px dashed #999";
+          }
         }
 
         elementsContainer.appendChild(elementDiv);
@@ -809,6 +889,18 @@ export async function directExportToPdf(
         backgroundColor: mergedOptions.includeBackground ? "white" : null,
         width: paperSize.width,
         height: paperSize.height,
+        imageTimeout: 0, // No timeout for images
+        onclone: (clonedDoc) => {
+          // Process images to ensure they render correctly
+          const images = clonedDoc.querySelectorAll("img");
+          images.forEach((img) => {
+            img.crossOrigin = "anonymous";
+
+            // Make sure images are visible
+            img.style.display = "block";
+            img.style.visibility = "visible";
+          });
+        },
       });
 
       // Get the PDF dimensions

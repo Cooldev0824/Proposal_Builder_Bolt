@@ -168,8 +168,18 @@ watch(
 // Watch for content changes from outside this component
 watch(
   () => props.element.content,
-  (newContent) => {
+  (newContent, oldContent) => {
     if (contentElement.value && !isUpdating) {
+      // Skip if the new content is empty or the same as the current content
+      if (newContent === "" || contentElement.value.innerHTML === newContent) {
+        return;
+      }
+
+      // Skip if the content element already has content and the new content is empty
+      if (contentElement.value.innerHTML !== "" && !newContent) {
+        return;
+      }
+
       // Temporarily disable the observer to prevent loops
       if (observer) {
         observer.disconnect();
@@ -236,7 +246,9 @@ function getNodePath(node: Node): number[] | null {
     const parentNode: ParentNode | null = currentNode.parentNode;
     if (!parentNode) return null;
 
-    const index = Array.from(parentNode.childNodes).indexOf(currentNode as ChildNode);
+    const index = Array.from(parentNode.childNodes).indexOf(
+      currentNode as ChildNode
+    );
     if (index === -1) return null;
 
     path.unshift(index);
@@ -275,10 +287,19 @@ function handleTextChange(_event: Event): void {
     // Error getting text around cursor
   }
 
+  // Get the current content before updating
+  const currentContent = contentElement.value.innerHTML;
+
+  // Prevent content from being reset to empty or previous value
+  if (currentContent === "") {
+    isUpdating = false;
+    return;
+  }
+
   // Update the element content
   const updatedElement = {
     ...props.element,
-    content: contentElement.value.innerHTML,
+    content: currentContent,
   };
 
   isUpdating = true;
@@ -895,7 +916,9 @@ function applyStyleToSelectedText(
       emit("update:element", updatedElement);
       return true;
     } catch (error) {
-      console.warn("execCommand is deprecated, consider using a modern alternative");
+      console.warn(
+        "execCommand is deprecated, consider using a modern alternative"
+      );
       return false;
     }
   }
@@ -977,9 +1000,21 @@ function setupMutationObserver() {
     );
 
     if (contentChanged) {
+      // Get the current content
+      const currentContent = contentElement.value?.innerHTML || "";
+
+      // Skip empty content or if it's the same as the current element content
+      if (currentContent === "" || currentContent === props.element.content) {
+        return;
+      }
+
       // Add a small delay to ensure the DOM has settled
       setTimeout(() => {
-        handleTextChange({ target: contentElement.value } as unknown as Event);
+        if (contentElement.value && contentElement.value.innerHTML !== "") {
+          handleTextChange({
+            target: contentElement.value,
+          } as unknown as Event);
+        }
       }, 10);
     }
   });

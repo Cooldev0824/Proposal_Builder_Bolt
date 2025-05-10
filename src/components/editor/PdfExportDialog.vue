@@ -361,7 +361,39 @@ async function exportPdf() {
           img.style.width = "100%";
           img.style.height = "100%";
           img.style.objectFit = element.style?.objectFit || "contain";
-          elementContainer.appendChild(img);
+          img.crossOrigin = "anonymous"; // Add CORS support
+
+          // Apply additional image styles from the element
+          if (element.style?.borderRadius) {
+            img.style.borderRadius = `${element.style.borderRadius}px`;
+          }
+
+          // Create a container for the image to handle background color and borders
+          const imgContainer = window.document.createElement("div");
+          imgContainer.style.width = "100%";
+          imgContainer.style.height = "100%";
+          imgContainer.style.overflow = "hidden";
+
+          // Apply background color if specified
+          if (element.style?.backgroundColor) {
+            imgContainer.style.backgroundColor = element.style.backgroundColor;
+          }
+
+          // Apply border if specified
+          if (element.style?.borderWidth) {
+            imgContainer.style.border = `${element.style.borderWidth}px solid ${
+              element.style.borderColor || "#000000"
+            }`;
+            imgContainer.style.boxSizing = "border-box";
+          }
+
+          // Apply border radius if specified
+          if (element.style?.borderRadius) {
+            imgContainer.style.borderRadius = `${element.style.borderRadius}px`;
+          }
+
+          imgContainer.appendChild(img);
+          elementContainer.appendChild(imgContainer);
         } else if (element.type === "shape") {
           // Create an SVG element for the shape
           const svg = window.document.createElementNS(
@@ -506,7 +538,22 @@ async function exportPdf() {
             img.style.width = "100%";
             img.style.height = "100%";
             img.style.objectFit = "contain";
-            elementContainer.appendChild(img);
+            img.crossOrigin = "anonymous"; // Add CORS support
+
+            // Create a container for the signature to handle background color
+            const signatureContainer = window.document.createElement("div");
+            signatureContainer.style.width = "100%";
+            signatureContainer.style.height = "100%";
+            signatureContainer.style.overflow = "hidden";
+
+            // Apply background color if specified
+            if (element.style?.backgroundColor) {
+              signatureContainer.style.backgroundColor =
+                element.style.backgroundColor;
+            }
+
+            signatureContainer.appendChild(img);
+            elementContainer.appendChild(signatureContainer);
           } else {
             elementContainer.style.border = "1px dashed #999";
           }

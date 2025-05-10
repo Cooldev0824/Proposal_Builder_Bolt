@@ -339,43 +339,6 @@
           ></div>
         </div>
       </div>
-
-      <div class="property-row mb-2">
-        <v-btn
-          color="primary"
-          size="small"
-          @click="applyAllColors"
-          class="apply-all-btn"
-        >
-          Apply All Colors
-        </v-btn>
-      </div>
-
-      <div class="color-presets mb-2">
-        <div class="property-group-subtitle mb-1">Text Color Presets</div>
-        <div class="color-preset-grid">
-          <div
-            v-for="color in colorPresets"
-            :key="color"
-            class="color-preset"
-            :style="{ backgroundColor: color }"
-            @click="selectColor(color)"
-          ></div>
-        </div>
-      </div>
-
-      <div class="color-presets">
-        <div class="property-group-subtitle mb-1">Background Color Presets</div>
-        <div class="color-preset-grid">
-          <div
-            v-for="color in colorPresets"
-            :key="color"
-            class="color-preset"
-            :style="{ backgroundColor: color }"
-            @click="selectBackgroundColor(color)"
-          ></div>
-        </div>
-      </div>
     </div>
   </div>
 </template>

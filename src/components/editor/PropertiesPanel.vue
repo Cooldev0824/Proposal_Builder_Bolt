@@ -9,7 +9,7 @@ import TableProperties from "./properties/TableProperties.vue";
 import FormProperties from "./properties/FormProperties.vue";
 
 // Import styles
-import '../../assets/styles/components/propertiesPanel.scss';
+import "../../assets/styles/components/propertiesPanel.scss";
 
 // 2. Functions
 function getPropertiesComponent(type: string) {
@@ -33,46 +33,6 @@ function formatElementType(type: string): string {
   return type.charAt(0).toUpperCase() + type.slice(1) + " Element";
 }
 
-function updatePosition() {
-  if (!props.selectedElement) return;
-
-  const updatedElement = {
-    ...props.selectedElement,
-    position: { ...position.value },
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function updateSize() {
-  if (!props.selectedElement) return;
-
-  const updatedElement = {
-    ...props.selectedElement,
-    size: { ...size.value },
-  };
-
-  emit("update:element", updatedElement);
-}
-
-function updateElement(element: DocumentElement) {
-  emit("update:element", element);
-}
-
-function deleteElement() {
-  if (!props.selectedElement) return;
-  emit("delete-element", props.selectedElement);
-}
-
-function duplicateElement() {
-  if (!props.selectedElement) return;
-  emit("duplicate-element", props.selectedElement);
-}
-
-function closePanel() {
-  emit("close");
-}
-
 // 3. Hooks and Reactive State
 const props = defineProps<{
   selectedElement: DocumentElement | null;
@@ -82,7 +42,6 @@ const emit = defineEmits<{
   (e: "update:element", element: DocumentElement): void;
   (e: "delete-element", element: DocumentElement): void;
   (e: "duplicate-element", element: DocumentElement): void;
-  (e: "close"): void;
 }>();
 
 const position = ref({ x: 0, y: 0 });
@@ -98,15 +57,43 @@ watch(
   },
   { immediate: true, deep: true }
 );
+
+// Simplified update functions
+function updatePosition() {
+  if (!props.selectedElement) return;
+  emit("update:element", {
+    ...props.selectedElement,
+    position: { ...position.value },
+  });
+}
+
+function updateSize() {
+  if (!props.selectedElement) return;
+  emit("update:element", {
+    ...props.selectedElement,
+    size: { ...size.value },
+  });
+}
+
+function updateElement(element: DocumentElement) {
+  emit("update:element", element);
+}
+
+function deleteElement() {
+  if (!props.selectedElement) return;
+  emit("delete-element", props.selectedElement);
+}
+
+function duplicateElement() {
+  if (!props.selectedElement) return;
+  emit("duplicate-element", props.selectedElement);
+}
 </script>
 
 <template>
   <div v-if="selectedElement" class="properties-panel">
     <div class="panel-header">
       <h3 class="panel-title">Properties</h3>
-      <v-btn icon size="small" @click="closePanel">
-        <v-icon>mdi-close</v-icon>
-      </v-btn>
     </div>
 
     <div class="panel-content">
@@ -195,5 +182,3 @@ watch(
     </div>
   </div>
 </template>
-
-
